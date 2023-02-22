@@ -5,7 +5,7 @@ Created on Tue Aug  2 14:46:56 2022
 @author: lace3018
 """
 
-from NKTP_DLL import *
+from . import NKTP_DLL as nkt
 import time
 import sys
     
@@ -27,16 +27,16 @@ def LaserCheck():
     print('---')
     print('LASER CHECK - INITIAL STATE')
     # Emission
-    exr_state = registerReadU8('COM4',15,0x30,-1)
+    exr_state = nkt.registerReadU8('COM4',15,0x30,-1)
     print('EXR: ',exr_state[1])
     # RF switch
-    rfswitch_state = registerReadU8('COM4',30,0x34,-1)
+    rfswitch_state = nkt.registerReadU8('COM4',30,0x34,-1)
     print('RF SWITCH: ',rfswitch_state[1])
     # RF power
-    rfpower_state = registerReadU8('COM4',18,0x30,-1)
+    rfpower_state = nkt.registerReadU8('COM4',18,0x30,-1)
     print('RF POWER: ',rfpower_state[1])
     # Connected crystal
-    crystal_state = registerReadU8('COM4',18,0x75,-1)
+    crystal_state = nkt.registerReadU8('COM4',18,0x75,-1)
     print('CRYSTAL: ',crystal_state[1])
     if exr_state[1] != 0 or rfswitch_state[1] != 0 or rfpower_state[1] != 0 or crystal_state[1] != 1:
         print('Actual state does not correspond to expected initial state, close and restart the laser system.')
@@ -53,11 +53,11 @@ def EmissionOn():
     None.
 
     '''
-    resultEXR = registerWriteU8('COM4',15,0x30,3,-1) # EXR on
-    print('Setting EXR emission ON:',RegisterResultTypes(resultEXR)[2:])
+    resultEXR = nkt.registerWriteU8('COM4',15,0x30,3,-1) # EXR on
+    print('Setting EXR emission ON:',nkt.RegisterResultTypes(resultEXR)[2:])
 
-    resultRF = registerWriteU8('COM4',18,0x30,1,-1) # RF on
-    print('Setting RF power ON:',RegisterResultTypes(resultRF)[2:])
+    resultRF = nkt.registerWriteU8('COM4',18,0x30,1,-1) # RF on
+    print('Setting RF power ON:',nkt.RegisterResultTypes(resultRF)[2:])
 
 def RFPowerOn():
     '''
@@ -68,8 +68,8 @@ def RFPowerOn():
     None.
 
     '''
-    tmp7 = registerWriteU8('COM4',18,0x30,1,-1) # RF on
-    print('Setting RF power ON:',RegisterResultTypes(tmp7)[2:])
+    tmp7 = nkt.registerWriteU8('COM4',18,0x30,1,-1) # RF on
+    print('Setting RF power ON:',nkt.RegisterResultTypes(tmp7)[2:])
     
 def RFPowerOff():
     '''
@@ -80,8 +80,8 @@ def RFPowerOff():
     None.
 
     '''
-    tmp5 = registerWriteU8('COM4',18,0x30,0,-1) # RF off
-    print('Setting RF power OFF:',RegisterResultTypes(tmp5)[2:])
+    tmp5 = nkt.registerWriteU8('COM4',18,0x30,0,-1) # RF off
+    print('Setting RF power OFF:',nkt.RegisterResultTypes(tmp5)[2:])
     time.sleep(0.3)
     
 def readRFSwitch():
@@ -94,7 +94,7 @@ def readRFSwitch():
         DESCRIPTION.
 
     '''
-    RF_switch = registerReadU8('COM4',30,0x34,-1)
+    RF_switch = nkt.registerReadU8('COM4',30,0x34,-1)
     print(RF_switch[1])
     return RF_switch[1]
     
@@ -113,15 +113,15 @@ def RFSwitch(RFSwitchState):
 
     '''
     if RFSwitchState==0:
-        tmp = registerWriteU8('COM4',30,0x34,1,-1)
+        tmp = nkt.registerWriteU8('COM4',30,0x34,1,-1)
     else:
-        tmp = registerWriteU8('COM4',30,0x34,0,-1)
+        tmp = nkt.registerWriteU8('COM4',30,0x34,0,-1)
         
     time.sleep(0.25)
-    RF_switch = registerReadU8('COM4',30,0x34,-1)
-    print('Setting RF switch to',RF_switch[1],':',RegisterResultTypes(tmp)[2:])
-    Connected_cristal = registerReadU8('COM4',18,0x75,-1)
-    print('Setting connected crystal to',Connected_cristal[1],':',RegisterResultTypes(tmp)[2:])
+    RF_switch = nkt.registerReadU8('COM4',30,0x34,-1)
+    print('Setting RF switch to',RF_switch[1],':',nkt.RegisterResultTypes(tmp)[2:])
+    Connected_cristal = nkt.registerReadU8('COM4',18,0x75,-1)
+    print('Setting connected crystal to',Connected_cristal[1],':',nkt.RegisterResultTypes(tmp)[2:])
 
 def ReadCrystal():
     '''
@@ -132,7 +132,7 @@ def ReadCrystal():
     Crystal state (int).
 
     '''
-    Connected_crystal = registerReadU8('COM4',18,0x75,-1)
+    Connected_crystal = nkt.registerReadU8('COM4',18,0x75,-1)
     print('Connected crystal ',Connected_cristal[1])
     return Connected_crystal
 
@@ -150,7 +150,7 @@ def setWavelength(wavelength):
     None.
 
     '''
-    registerWriteU32('COM4',18,0x90,int(wavelength),-1)
+    nkt.registerWriteU32('COM4',18,0x90,int(wavelength),-1)
     print('Setting wavelength to',int(wavelength),' pm')
 
 def setAmplitude(amplitude):
@@ -167,8 +167,8 @@ def setAmplitude(amplitude):
     None.
 
     '''
-    tmp = registerWriteU16('COM4',18,0xB0,int(amplitude)*10,-1) # 0 amplitude 
-    print('Setting RF amplitude:',RegisterResultTypes(tmp)[2:])
+    tmp = nkt.registerWriteU16('COM4',18,0xB0,int(amplitude)*10,-1) # 0 amplitude 
+    print('Setting RF amplitude:',nkt.RegisterResultTypes(tmp)[2:])
 
 def switchCrystalCondition(wavelength,RF_switch):
     '''
@@ -189,7 +189,7 @@ def switchCrystalCondition(wavelength,RF_switch):
         either 0 or 1.
 
     '''
-    crystal_1_maximum_wavelength = registerReadU32('COM4',30,0x91,-1) # in pm
+    crystal_1_maximum_wavelength = nkt.registerReadU32('COM4',30,0x91,-1) # in pm
     switch=0
     if (wavelength > crystal_1_maximum_wavelength[1]) and RF_switch == 0:
         switch=1
@@ -207,12 +207,12 @@ def CloseAll():
 
     '''
     # Emission
-    registerWriteU8('COM4',15,0x30,0,-1)
+    nkt.registerWriteU8('COM4',15,0x30,0,-1)
     print('EMISSION OFF')
     time.sleep(0.3)
     # RF power
-    registerWriteU8('COM4',18,0x30,0,-1)
+    nkt.registerWriteU8('COM4',18,0x30,0,-1)
     print('RF POWER OFF')
     # RF switch
-    registerWriteU8('COM4',30,0x34,0,-1)
+    nkt.registerWriteU8('COM4',30,0x34,0,-1)
     print('RF SWITCH SET TO 0')

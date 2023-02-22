@@ -2,25 +2,29 @@
 """
 Created on Tue Aug  2 15:43:30 2022
 
-@author: lace3018
+Main script for running a P-DHM acquisition.
 
-This code launches a single P-DHM acquisition: 
-    - saves holograms in distinct files at each of the specified wavelength [nm] in the input
-    - saves a log file containing time stamps, wavelengths and OPL as well as shutter speeds.
+@author: lace3018
 """
 
-import laserCommands as laser
-import koalaCommands as koala
-import Inputs
-import PDHM
+import modules.PDHM as PDHM
 import time
-import os
-import sys
 
-host,path,wls,N,OPL_guesses,shutter_speeds = PDHM.Initialize(video=False)
+host,path,frameRate,maxtime,wls,N,OPL_guesses,shutter_speeds = PDHM.Initialize() # Assigns values to the variables required for P-DHM acquisition.
 
-frame=0
+# Video parameters initialization
+frame = 0
 starttime=time.time()
-PDHM.Acquire(host, frame, starttime, path, wls, N, OPL_guesses, shutter_speeds)
+sleeptime=1/frameRate
+
+# Loop on video frames
+while True:
+    elapsed_time=time.time()-starttime
+    print("FRAME ",frame,"\t elapsed time: ",elapsed_time)
+    PDHM.Acquire(host, frame, starttime, path, wls, N, OPL_guesses, shutter_speeds)
+    time.sleep(sleeptime - ((time.time()-starttime)%sleeptime))
+    if elapsed_time>maxtime:
+        break
+    frame+=1
 
 PDHM.Reset(host, 666000)

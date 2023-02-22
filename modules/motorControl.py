@@ -5,10 +5,9 @@ Created on Mon Aug  8 14:13:29 2022
 @author: lace3018
 """
 
-import laserCommands as laser
+from . import laserCommands as laser
 import numpy as np
 import matplotlib.pyplot as plt
-import time
 
 def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step=5): 
     '''

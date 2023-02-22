@@ -1,6 +1,0 @@
-Mono- or polychromatic: 	P
-Identification: 	crma3004
-Save folder: 	CultureMixte_CtrlHBS
-Save subfolder: 	FOV2
-Microscope objective magnification: 	20X
-Sample: 	chambre_cellules

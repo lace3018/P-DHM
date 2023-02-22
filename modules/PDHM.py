@@ -5,9 +5,9 @@ Created on Tue Aug  2 15:43:30 2022
 @author: lace3018
 """
 
-import laserCommands as laser
-import koalaCommands as koala
-import Inputs
+import modules.laserCommands as laser
+import modules.koalaCommands as koala
+import modules.Inputs as Inputs
 import time
 import os
 
