@@ -1,0 +1,5 @@
+Mono- or polychromatic: 	P
+Identification: 	lace3018
+Save folder: 	RatNeurons
+Save subfolder: 	
+Microscope objective magnification: 	20x
