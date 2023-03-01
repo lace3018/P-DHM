@@ -22,18 +22,20 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-def getOPLTable():
+def getOPLTable(fromMain=False,host_from_main=None):    
     laser.LaserCheck()
     laser.EmissionOn()
-    start_time = time.time() # Timing
     laser.setAmplitude(100)
+        
+    if fromMain==False:
+        host = koala.KoalaLogin()
+    else:
+        host = host_from_main
     RFSwitchState=laser.readRFSwitch()
-    
-    host = koala.KoalaLogin()
-    
+    start_time = time.time() # Timing
     optimal_OPL_list=[]  
     sample = Inputs.setObject()
-    path,MO,wls,N,OPL_array,shutter_array,half_interval,step=Inputs.setMotorSweepParameters()
+    path,MO,wls,OPL_array,shutter_array,interval,step=Inputs.setMotorSweepParameters()
     
     for wl,i in zip(wls,range(0,len(wls))):
         if laser.switchCrystalCondition(wls[i],RFSwitchState)==1:
@@ -47,15 +49,14 @@ def getOPLTable():
         
         laser.setWavelength(wl)
         
-        pos,contrast,optimal_OPL = motor.balanceInterferometer(host, wl, OPL_array[i], shutter_array[i],half_interval,step)
+        pos,contrast,optimal_OPL = motor.balanceInterferometer(host, wl, OPL_array[i], shutter_array[i],interval/2,step)
         
         plt.close('all')
-        plt.plot(motor.qc2um(pos),contrast,'o',color='red',markersize=1.5)
-        plt.axvline(x=motor.qc2um(optimal_OPL),color='green',linestyle='dashed',label='optimal OPL')
+        plt.plot(motor.qc2um(pos),contrast,'ko-',markersize=4)
+        plt.axvline(x=motor.qc2um(optimal_OPL),color='red',linestyle='-')
         plt.xlabel('OPL [$\mu$m]')
         plt.ylabel('Hologram contrast')
         plt.grid(True)
-        plt.legend()
         plt.show()
         
         # Save data
@@ -77,4 +78,3 @@ def getOPLTable():
     laser.RFSwitch(RFSwitchState)
     time.sleep(0.3)    
 
-getOPLTable()

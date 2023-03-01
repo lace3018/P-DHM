@@ -8,7 +8,7 @@ Created on Tue Aug  2 15:43:30 2022
 import modules.laserCommands as laser
 import modules.koalaCommands as koala
 import modules.Inputs as Inputs
-from . import getOPLTable as got
+import getOPLTable as got
 import time
 
 def Initialize(video=True):
@@ -42,10 +42,11 @@ def Initialize(video=True):
     
     # Ask for OPL table update
     update_opl_bool = Inputs.getUpdateOPLChoice()
-    
+
     if update_opl_bool==True:
-        got.getOPLTable()
-    path,wls,OPL_guesses,shutter_speeds = Inputs.setExperimentParameters()
+        got.getOPLTable(fromMain=True,host_from_main=host)
+        
+    path,wls,OPL_guesses,shutter_speeds = Inputs.setupExperiment()
     N=len(wls)
     
     print('Wavelength array : ',wls)
