@@ -8,23 +8,6 @@ Created on Tue Aug  2 15:15:22 2022
 import sys
 import clr
 import PySimpleGUI as sg
-
-def checkKoalaRemote():
-    '''
-    Generates input validation that user has activated Remote Mode in Koala (or else code won't work).
-
-    Returns
-    -------
-    None.
-
-    '''
-    sg.theme('DarkBlue15')
-    layout = [[sg.Text('Is the Remote Mode button pressed in Koala?')],
-              [sg.T("      "), sg.Checkbox('Yes',default=False)],
-              [sg.T("")],[sg.T("        "), sg.Button('Launch acquisition',size=(20,4))],[sg.T("")]]
-    window = sg.Window('Validation', layout, size=(300,300))
-    event, values = window.read()
-    window.close()
     
 def KoalaLogin():
     '''
@@ -55,9 +38,16 @@ def KoalaLogin():
     username = ''
     [ret,username] = host.Connect(IP,username,True);
     password = username
-    host.Login(password)
+    login_bool = host.Login(password)
 
-    print('Logged in Koala')
+    if login_bool==True:
+        print('Logged in Koala')
+        print('---')
+    else:
+        print('Open production (remote) mode in Koala and try again')
+        sys.exit()
 
-    print('---')
     return host
+
+def KoalaLogout(host):
+    host.Logout()

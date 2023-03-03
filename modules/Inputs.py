@@ -10,8 +10,9 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 from scipy.interpolate import interp1d
-import displayPlots as dp
+from . import displayPlots as dp
 import os
+import sys
 
 sg.theme('DefaultNoMoreNagging')
 
@@ -35,7 +36,8 @@ def getUpdateOPLChoice():
             event, values = window.read()
             if event == sg.WINDOW_CLOSED:
                 update_opl = False  # default value if window is closed
-                break
+                window.close()
+                sys.exit()
             elif event == 'Yes':
                 update_opl = True
                 break
@@ -45,7 +47,6 @@ def getUpdateOPLChoice():
     
         window.close()
     
-        print(f'Update OPL table: {update_opl}')
         return update_opl
     except Exception as e:
         print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
@@ -89,8 +90,8 @@ def setupExperiment():
         userID,saveFolder,saveSubFolder = setSavingParameters()                   
         wavelengths = setWavelengthArray(MonoOrPoly)       
         path,pathlog = setupPath(userID,'RawData',datetime.today().strftime('%Y%m%d'),MO,saveFolder,saveSubFolder)
-        OPL_array = setOPLarray(wavelengths)
-        shutter_array = setShutterArray(wavelengths)
+        OPL_array = setOPLarray(wavelengths, pathlog)
+        shutter_array = setShutterArray(wavelengths, pathlog)
         
         np.savetxt(str(pathlog)+'\wavelengths.txt',wavelengths)
         
@@ -98,6 +99,7 @@ def setupExperiment():
     
     except Exception as e:
         print(f"An error occurred while setting up the experiment: {str(e)}")
+        sys.exit()
 
 
 def setMicroscopeObjective():
@@ -129,7 +131,8 @@ def setMicroscopeObjective():
         while True:
             event, values = window.read()
             if event in (None, 'Cancel'):
-                break
+                window.close()
+                sys.exit()
             elif event == 'Submit':
                 if values['-10X-']:
                     MO = '10x'
@@ -139,7 +142,6 @@ def setMicroscopeObjective():
                     MO = '40x'
                 else:
                     MO = '100x'
-                print(f'Selected magnification: {MO}')
                 settings['-MAGNIFICATION-'] = MO
                 break   
         window.close()
@@ -147,6 +149,7 @@ def setMicroscopeObjective():
         return MO
     except Exception as e:
         print(f"An error occurred while setting up the microscope objective: {str(e)}")
+        sys.exit()
         
         
 def setSavingParameters():
@@ -191,7 +194,8 @@ def setSavingParameters():
                 userID = default_userID
                 saveFolder = default_saveFolder
                 saveSubFolder = default_saveSubFolder
-                break
+                window.close()
+                sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
                 settings['userID'] = values['userID']
@@ -209,6 +213,7 @@ def setSavingParameters():
         return userID, saveFolder, saveSubFolder
     except Exception as e:
         print(f"An error occurred while selecting the saving parameters: {str(e)}")
+        sys.exit()
 
 def setVideoParameters():
     '''
@@ -246,7 +251,8 @@ def setVideoParameters():
                 # If the user cancels, return the default values
                 frameRate = default_frameRate
                 maxTime = default_maxTime
-                break
+                window.close()
+                sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
                 settings['frameRate'] = values['frameRate']
@@ -260,11 +266,12 @@ def setVideoParameters():
         window.close()
         
         frameRate = int(frameRate)/60   # TODO : changer la variable pour que ce soit un vrai framerate ou changer le nom en conséquence
-        maxTime = int(maxTime)*60
+        maxTime = (int(maxTime))*60
         
         return frameRate,maxTime
     except Exception as e:
         print(f"An error occurred while setting the video parameters: {str(e)}")
+        sys.exit()
 
 def setWavelengthArray(MonoOrPoly):
     '''
@@ -313,7 +320,8 @@ def setWavelengthArray(MonoOrPoly):
                     num_values = default_n
                     min_value = default_min_wl
                     max_value = default_max_wl
-                    break
+                    window.close()
+                    sys.exit()
                 elif event == 'Submit':
                     # If the user submits, update the user settings with the new values
                     settings['num_values'] = values['num_values']
@@ -335,6 +343,7 @@ def setWavelengthArray(MonoOrPoly):
                 ii = np.searchsorted(wls_array,wl2add)
                 wls_array = np.insert(wls_array,ii,wl2add)
             
+            wls_array = np.asarray(wls_array).astype('float')
             return wls_array
         
         else:
@@ -362,7 +371,8 @@ def setWavelengthArray(MonoOrPoly):
                     # If the user cancels, return the default values
                     num_values = default_n
                     wavelength = default_wl
-                    break
+                    window.close()
+                    sys.exit()
                 elif event == 'Submit':
                     # If the user submits, update the user settings with the new values
                     settings['num_values'] = values['num_values']
@@ -376,13 +386,13 @@ def setWavelengthArray(MonoOrPoly):
             
             window.close()
             
-            wls_array = np.asarray(wls_array)
+            wls_array = np.asarray(wls_array).astype('float')
             return wls_array
     except Exception as e:
         print(f"An error occurred while setting the wavelength array: {str(e)}")
-        
+        sys.exit()
 
-def setOPLarray(wls):
+def setOPLarray(wls, path_log):
     '''
     Sets the optical path length (OPL) array by asking the user to select a txt 
     file containing the optimal OPL values for the present acquisition.
@@ -418,7 +428,8 @@ def setOPLarray(wls):
             if event in (None, 'Cancel'):
                 # If the user cancels, return the default values
                 oplPath = default_oplPath
-                break
+                window.close()
+                sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
                 settings['oplPath'] = values['oplPath']
@@ -440,13 +451,14 @@ def setOPLarray(wls):
         OPL_array = np.array(interpolation_function(wls/1000))
         
         # Plot the OPL array and interpolation function
-        dp.plot(wls_for_display,OPL_for_display*0.0507+25946,wls/1000,OPL_array*0.0507+25946,'OPL [$\mu$m]') # TODO : add if statement for the conversion into micrometers so that its valid for all the magnifications
+        dp.plotTable(wls_for_display,OPL_for_display*0.0507+25946,wls/1000,OPL_array*0.0507+25946,'OPL [$\mu$m]', path_log, 'oplTablePlot') # TODO : add if statement for the conversion into micrometers so that its valid for all the magnifications
         return OPL_array
     except Exception as e:
         print(f"An error occurred while setting the OPL array: {str(e)}")
+        sys.exit()
         
 
-def setShutterArray(wls):
+def setShutterArray(wls, path_log):
     '''
     Sets the shutter speed array by asking the user to select a txt 
     file containing the optimal shutter speed values for the present acquisition.
@@ -482,7 +494,8 @@ def setShutterArray(wls):
             if event in (None, 'Cancel'):
                 # If the user cancels, return the default values
                 shutterPath = default_shutterPath
-                break
+                window.close()
+                sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
                 settings['shutterPath'] = values['shutterPath']
@@ -494,7 +507,7 @@ def setShutterArray(wls):
         
         # Interpolation
         shutter_from_table = np.loadtxt(shutterPath,skiprows=1).T
-        interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[1],kind='quadratic',bounds_error=False,fill_value=-10.)
+        interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[2],kind='quadratic',bounds_error=False,fill_value=-10.)
         
         # Arrays to display the interpolation function on the graph
         wls_for_display = np.linspace(shutter_from_table[0][0],shutter_from_table[0][-1],1000)
@@ -504,10 +517,11 @@ def setShutterArray(wls):
         shutter_array = np.array(interpolation_function(wls/1000))
         
         # Plot the shutter array and interpolation function
-        dp.plot(wls_for_display,shutter_for_display,wls/1000,shutter_array,'Shutter speed [ms]')
+        dp.plotTable(wls_for_display,shutter_for_display,wls/1000,shutter_array,'Shutter speed [ms]', path_log, 'shutterTablePlot')
         return shutter_array
     except Exception as e:
         print(f"An error occurred while setting the shutter array: {str(e)}")
+        sys.exit()
 
 def setObject():
     '''
@@ -535,11 +549,10 @@ def setObject():
             if event == 'Submit':
                 # Save the values to the UserSettings object
                 settings.set('selected_option', values['fac'][0])
-                # Print the values for testing
-                print(values)
                 break
             if event == 'Cancel':
                 window.close()
+                sys.exit()
         
         # Close the window
         window.close()
@@ -558,7 +571,8 @@ def setObject():
             
         return sample
     except Exception as e:
-        print(f"An error occurred while selecting the object: {str(e)}") 
+        print(f"An error occurred while selecting the object: {str(e)}")
+        sys.exit() 
    
 def setMotorSweepParameters():
     try:
@@ -586,7 +600,8 @@ def setMotorSweepParameters():
                 # If the user cancels, return the default values
                 step = default_step
                 interval = default_interval
-                break
+                window.close()
+                sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
                 settings['step'] = values['step']
@@ -598,11 +613,6 @@ def setMotorSweepParameters():
         
         window.close()
         
-        MO = setMicroscopeObjective()
-        wavelengths = setWavelengthArray('P')
-        OPL_array = setOPLarray(wavelengths)
-        shutter_array = setShutterArray(wavelengths)
-        
         # Generate path
         setupPath('lace3018','PDHM_automated_acquisition','tables',datetime.today().strftime('%Y%m%d'),'','')
         date=datetime.today().strftime('%Y%m%d')
@@ -612,10 +622,16 @@ def setMotorSweepParameters():
         if not isExist:
             os.makedirs(pathlog)
             
+        MO = setMicroscopeObjective()
+        wavelengths = setWavelengthArray('P')
+        OPL_array = setOPLarray(wavelengths,pathlog)
+        shutter_array = setShutterArray(wavelengths,pathlog)
+
         return path,MO,wavelengths,OPL_array,shutter_array,interval,step
     
     except Exception as e:
         print(f"An error occurred while setting the motor sweep parameters: {str(e)}")
+        sys.exit()
 
 
 def setupPath(folder1,folder2,folder3,folder4,folder5,folder6):
@@ -634,3 +650,4 @@ def setupPath(folder1,folder2,folder3,folder4,folder5,folder6):
 
     except Exception as e:
         print(f"An error occurred while setting up the path: {str(e)}")
+        sys.exit()

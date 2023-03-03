@@ -5,7 +5,6 @@ Created on Wed Mar  1 09:18:54 2023
 @author: Celine
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
 
 def set_plotting_style():
@@ -26,14 +25,39 @@ def set_plotting_style():
   plt.rcParams['lines.markersize']=4
   plt.rcParams['legend.numpoints']=1
 
-def plot(x1,y1,x2,y2,ylabel):
-    set_plotting_style()
+def plotTable(x1, y1, x2, y2, ylabel, savepath, savename):
+    try:
+        plt.close('all')
+        set_plotting_style()
+        
+        plt.figure()
+        plt.plot(x1,y1,'k-',label='Interpolation from uploaded table')
+        plt.plot(x2,y2,'ro',label='Values used for the experiment')
+        plt.xlabel("Wavelength [nm]")
+        plt.ylabel(ylabel)
+        plt.legend(loc='best')
+        plt.grid(True)
+        plt.savefig(str(savepath)+'/'+savename+'.png',dpi=300)
+        plt.show()
+    except Exception as e:
+        print(f"An error occurred while plotting the OPR or shutter table: {str(e)}")
     
-    plt.figure()
-    plt.plot(x1,y1,'k-',label='Interpolation from uploaded table')
-    plt.plot(x2,y2,'ro',label='Values used for the experiment')
-    plt.xlabel("Wavelength [nm]")
-    plt.ylabel(ylabel)
-    plt.legend(loc='best')
-    plt.grid(True)
-    plt.show()
+def plotContrast(frame, wls, contrasts, savepath, savename):
+    try:
+        plt.close('all')
+        set_plotting_style()
+        x = wls/1000
+        y = contrasts
+
+        plt.stem(x, y, linefmt='k-', markerfmt='ko', use_line_collection = True)
+        plt.fill_between(x, y1=5, y2=0,color='red',alpha=0.3,label='Very low contrast')
+        plt.fill_between(x, y1=7.5, y2=5,color='yellow',alpha=0.3,label='Low contrast')
+        plt.title(f'Fringe contrast values for the holograms at frame {frame}')
+        plt.xlabel('Wavelength [nm]')
+        plt.ylabel('Contrast')
+        plt.grid(True)
+        plt.legend(loc='best')
+        plt.savefig(str(savepath)+'/'+savename+'.png',dpi=300)
+        plt.show()
+    except Exception as e:
+        print(f"An error occurred while plotting the contrast: {str(e)}")
