@@ -5,7 +5,7 @@ Automatic polychromatic-DHM video acquisition
 This project automatically saves holograms using TCP-IP remote communication with Koala while sweeping the wavelength of the supercontinuum laser (NKT Photonics EXR-20 with SuperK accousto-optic filter (AOTF)).
 
 ## Installation instructions
-To keep the copy up-to-date, users can periodically run the following command inside their user_repository folder: ~~~ git pull ~~~.
+To keep the copy up-to-date, users can periodically run the following command inside their user_repository folder: ``` git pull ```.
 This will pull any changes made to the development repository into the user_repository folder.
 
 ## Usage instructions
