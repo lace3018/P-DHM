@@ -133,7 +133,7 @@ def ReadCrystal():
 
     '''
     Connected_crystal = nkt.registerReadU8('COM4',18,0x75,-1)
-    print('Connected crystal ',Connected_cristal[1])
+    print('Connected crystal ',Connected_crystal[1])
     return Connected_crystal
 
 def setWavelength(wavelength):

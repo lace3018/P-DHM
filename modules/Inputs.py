@@ -16,6 +16,40 @@ import sys
 
 sg.theme('DefaultNoMoreNagging')
 
+def getUpdateShutterChoice():
+    '''
+    This function creates a GUI window to ask the user whether they want to update the shutter table. The function returns a boolean value indicating the user's choice. 
+
+    Returns
+    -------
+    update_shutter : BOOL
+    '''
+    try:
+        update_opl = False
+        layout = [[sg.Text('Do you need to update the shutter table?')],
+                  [sg.Button('Yes'), sg.Button('No')]]
+    
+        window = sg.Window('Update shutter table', layout)
+    
+        while True:
+            event, values = window.read()
+            if event == sg.WINDOW_CLOSED:
+                update_shutter = False  # default value if window is closed
+                window.close()
+                sys.exit()
+            elif event == 'Yes':
+                update_shutter = True
+                break
+            elif event == 'No':
+                update_shutter = False
+                break
+    
+        window.close()
+    
+        return update_shutter
+    except Exception as e:
+        print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
+
 
 def getUpdateOPLChoice():
     '''
@@ -507,7 +541,7 @@ def setShutterArray(wls, path_log):
         
         # Interpolation
         shutter_from_table = np.loadtxt(shutterPath,skiprows=1).T
-        interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[2],kind='quadratic',bounds_error=False,fill_value=-10.)
+        interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[1]*0.7,kind='quadratic',bounds_error=False,fill_value=-10.) #TODO: ne pas hardcoder le 95% du shutter
         
         # Arrays to display the interpolation function on the graph
         wls_for_display = np.linspace(shutter_from_table[0][0],shutter_from_table[0][-1],1000)
@@ -517,7 +551,7 @@ def setShutterArray(wls, path_log):
         shutter_array = np.array(interpolation_function(wls/1000))
         
         # Plot the shutter array and interpolation function
-        dp.plotTable(wls_for_display,shutter_for_display,wls/1000,shutter_array,'Shutter speed [ms]', path_log, 'shutterTablePlot')
+        dp.plotTable(wls_for_display,shutter_for_display,wls/1000,shutter_array,'Shutter speed [us]', path_log, 'shutterTablePlot')
         return shutter_array
     except Exception as e:
         print(f"An error occurred while setting the shutter array: {str(e)}")
@@ -614,10 +648,9 @@ def setMotorSweepParameters():
         window.close()
         
         # Generate path
-        setupPath('lace3018','PDHM_automated_acquisition','tables',datetime.today().strftime('%Y%m%d'),'','')
         date=datetime.today().strftime('%Y%m%d')
-        path = Path(r'\\172.16.1.103\data\DHM 1087\lace3018\PDHM_automated_acquisition\tables\%s'%(date))
-        pathlog=Path(r'\\172.16.1.103\data\DHM 1087\lace3018\PDHM_automated_acquisition\tables\%s\Log'%(date))
+        path = Path(r'\\172.16.1.103\data\DHM 1087\_P-DHM\PDHM_automated_acquisition\tables\%s'%(date))
+        pathlog=Path(r'\\172.16.1.103\data\DHM 1087\_P-DHM\PDHM_automated_acquisition\tables\%s\Log'%(date))
         isExist=os.path.exists(pathlog)
         if not isExist:
             os.makedirs(pathlog)
@@ -627,12 +660,32 @@ def setMotorSweepParameters():
         OPL_array = setOPLarray(wavelengths,pathlog)
         shutter_array = setShutterArray(wavelengths,pathlog)
 
-        return path,MO,wavelengths,OPL_array,shutter_array,interval,step
+        return path,MO,wavelengths,OPL_array,shutter_array,float(interval),float(step)
     
     except Exception as e:
         print(f"An error occurred while setting the motor sweep parameters: {str(e)}")
         sys.exit()
 
+
+def setShutterSweepParameters():
+    try:
+       # Generate path
+        date=datetime.today().strftime('%Y%m%d')
+        pathlog='tables\\'+date+'\Log'
+        isExist=os.path.exists(pathlog)
+        if not isExist:
+            os.makedirs(pathlog)
+            
+        MO = setMicroscopeObjective()
+        wavelengths = setWavelengthArray('P')
+        OPL_array = setOPLarray(wavelengths,pathlog)
+        shutter_array = setShutterArray(wavelengths,pathlog)
+
+        return MO,wavelengths,OPL_array,shutter_array
+    
+    except Exception as e:
+        print(f"An error occurred while setting the motor sweep parameters: {str(e)}")
+        sys.exit()
 
 def setupPath(folder1,folder2,folder3,folder4,folder5,folder6):
     '''

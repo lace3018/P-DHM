@@ -50,8 +50,9 @@ def plotContrast(frame, wls, contrasts, savepath, savename):
         y = contrasts
 
         plt.stem(x, y, linefmt='k-', markerfmt='ko', use_line_collection = True)
-        plt.fill_between(x, y1=5, y2=0,color='red',alpha=0.3,label='Very low contrast')
-        plt.fill_between(x, y1=7.5, y2=5,color='yellow',alpha=0.3,label='Low contrast')
+        plt.fill_between(x, y1=max(contrasts), y2=20,color='green',alpha=0.3,label='Good contrast')
+        plt.fill_between(x, y1=20, y2=10,color='yellow',alpha=0.3,label='OK contrast')
+        plt.fill_between(x, y1=10, y2=0,color='red',alpha=0.3,label='Low contrast')
         plt.title(f'Fringe contrast values for the holograms at frame {frame}')
         plt.xlabel('Wavelength [nm]')
         plt.ylabel('Contrast')

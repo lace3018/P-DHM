@@ -19,7 +19,7 @@ def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step
         Contacts Koala Remote.
     wl : numpy array
         Array of wavelengths.
-    OPL_guess : numpy array
+    OPL_guess : float
         OPL value that the function sweeps around.
     shutter_speed : numpy array
         Pre-selected shutter speeds for each wavelength.
@@ -47,7 +47,7 @@ def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step
     # RFSwitchState = laser.readRFSwitch()
     
     laser.setWavelength(wl)
-    host.SetCameraShutterUs(shutter_speed*1e3)
+    host.SetCameraShutterUs(shutter_speed)
     initPos = int(OPL_guess)
     positions = np.arange(initPos-half_interval_qc,initPos+half_interval_qc,step_qc)
     host.MoveOPL(positions[0])

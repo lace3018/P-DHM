@@ -9,7 +9,7 @@ import modules.laserCommands as laser
 import modules.koalaCommands as koala
 import modules.Inputs as Inputs
 import modules.displayPlots as dp
-import getOPLTable as got
+import getTable as gt
 import time
 import os
 
@@ -42,10 +42,16 @@ def Initialize(video=True):
     host=koala.KoalaLogin()
     
     # Ask for OPL table update
+    update_shutter_bool = Inputs.getUpdateShutterChoice()
+
+    if update_shutter_bool==True:
+        gt.getShutterTable(fromMain=True,host_from_main=host)
+    
+    
     update_opl_bool = Inputs.getUpdateOPLChoice()
 
     if update_opl_bool==True:
-        got.getOPLTable(fromMain=True,host_from_main=host)
+        gt.getOPLTable(fromMain=True,host_from_main=host)
         
     path,wls,OPL_guesses,shutter_speeds = Inputs.setupExperiment()
     
@@ -95,7 +101,7 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
         wavelength = wavelengths_array[i]
         laser.setWavelength(wavelength)
         host.MoveOPL(OPL_guesses[i])
-        host.SetCameraShutterUs((shutter_speeds[i]) * 1e3) # set camera to preset shutter value
+        host.SetCameraShutterUs((shutter_speeds[i])) # set camera to preset shutter value
 
         if laser.switchCrystalCondition(wavelength,RFSwitchState) == 1:
             laser.RFPowerOff()
