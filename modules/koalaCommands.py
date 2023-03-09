@@ -7,7 +7,6 @@ Created on Tue Aug  2 15:15:22 2022
 
 import sys
 import clr
-import PySimpleGUI as sg
     
 def KoalaLogin():
     '''

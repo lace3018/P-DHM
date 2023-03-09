@@ -23,6 +23,8 @@ from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+import tempfile
+import tifffile
 
 def getOPLTable(fromMain=False,host_from_main=None):  
     
@@ -39,7 +41,7 @@ def getOPLTable(fromMain=False,host_from_main=None):
     start_time = time.time() # Timing
     optimal_OPL_list=[]  
     sample = Inputs.setObject()
-    path,MO,wls,OPL_array,shutter_array,interval,step=Inputs.setMotorSweepParameters()
+    MO,wls,OPL_array,shutter_array,interval,step=Inputs.setMotorSweepParameters()
     
     for wl,i in zip(wls,range(0,len(wls))):
         if laser.switchCrystalCondition(wls[i],RFSwitchState)==1:
@@ -99,10 +101,11 @@ def getShutterTable(fromMain=False,host_from_main=None):
     RFSwitchState=laser.readRFSwitch()
     start_time = time.time() # Timing
     sample = Inputs.setObject()
-    MO,wls,OPL_array,shutter_guess_array=Inputs.setShutterSweepParameters()
+    MO,wls,OPL_array=Inputs.setShutterSweepParameters()
     
     optimal_shutter_list = []
     for wl,i in zip(wls,range(len(wls))):
+        print('\n\n WAVELENGTH: ',str(wl),' pm\n\n')
         if laser.switchCrystalCondition(wl,RFSwitchState)==1:
             laser.RFPowerOff()
             time.sleep(0.25)
@@ -115,59 +118,66 @@ def getShutterTable(fromMain=False,host_from_main=None):
         laser.setWavelength(wl)
         host.MoveOPL(OPL_array[i])
         
-        initial_shutter_value = shutter_guess_array[i]
-        frac = 2
-        step = frac*initial_shutter_value/75
-        shutter_sweep_array = np.arange(initial_shutter_value - frac*initial_shutter_value, initial_shutter_value + frac*initial_shutter_value, step)
-        min_val = np.min(shutter_sweep_array)
-        if min_val < 0:
-            shutter_sweep_array = shutter_sweep_array - min_val
-    
+        step = 50 # us
+        shutter = 0
+        
         # Loop on shutter values
-        contrast = [host.GetHoloContrast()]
-        shutter = [shutter_sweep_array[0]]
+        max_pixel = [0]
+        shutter_plot = [0]
         plt.ion()
-        figure, ax = plt.subplots(figsize=(12,4))
-        line1, = ax.plot(shutter,contrast,'k-')
+        figure, ax = plt.subplots(figsize=(12,5))
+        line1, = ax.plot(shutter_plot,max_pixel,'k-')
         plt.title(str(round(wl))+' pm')
         plt.xlabel('Exposition time [$\mu$s]')
-        plt.ylabel('Contrast')
+        plt.ylabel('Hologram max pixel value')
         plt.grid(True)
+        legend_created=False
         
-        for s in shutter_sweep_array:
-            print('\nSHUTTER VALUE:',s*1e-3,' ms')
-            host.SetCameraShutterUs(s) # TODO: attention aux unités
-            time.sleep(s*1e-6)
-            contrast.append(host.GetHoloContrast())
-            shutter.append(s)
-            
-            line1.set_xdata(shutter)
-            line1.set_ydata(contrast)
-            ax.set_xlim(shutter[0],shutter[-1])
-            ax.set_ylim(np.min(contrast),np.max(contrast))
-            figure.canvas.draw()
-            figure.canvas.flush_events()
+        with tempfile.TemporaryDirectory() as temp_dir:
+        
+            while True:
+                shutter += step
+                print('SHUTTER VALUE:',shutter,' ms; STEP: ',step)
+                
+                host.SetCameraShutterUs(shutter)
+                time.sleep(shutter*1e-6)
+                host.SaveImageToFile(1,temp_dir+'holo_temp.tiff')
+                time.sleep(0.05)
+                temp_holo = tifffile.imread(temp_dir+'holo_temp.tiff')
+                if np.any(temp_holo == np.iinfo(temp_holo.dtype).max) and shutter>500:
+                    optimal_shutter_list.append(shutter-step)
+                    print('\n*****\n optimal shutter for '+str(wl)+' pm: ',str(shutter-step),'\n*****\n')
+                    break
+                mp = np.max(temp_holo)
+                if 2500<shutter<7000:
+                    step = 200
+                if shutter>7000:
+                    if mp<230:
+                        step = 2000
+                    else:
+                        step = 200
+                shutter_plot.append(shutter)
+                max_pixel.append(mp)
+                
+                line1.set_xdata(shutter_plot)
+                line1.set_ydata(max_pixel)
+                if shutter_plot[0]==shutter_plot[-1]:
+                    ax.set_xlim(shutter_plot[0],step)
+                else:
+                    ax.set_xlim(shutter_plot[0],shutter_plot[-1])
+                ax.set_ylim(0,275)
+                ax.axhline(y=255,color='red',label='Saturation')
+                if not legend_created:
+                    ax.legend()
+                    legend_created = True
+                figure.canvas.draw()
+                figure.canvas.flush_events()
         
         plt.close()
         
-        contrast = np.asarray(contrast)
-        shutter = np.asarray(shutter)
-        optimal_shutter = shutter[contrast.argmax()] # Extracting position for max holo contrast
-        optimal_shutter_list.append(optimal_shutter)
-        
-        plt.close('all')
-        plt.plot(shutter,contrast,'ko-',markersize=4)
-        plt.axvline(x=optimal_shutter,color='red',linestyle='-')
-        plt.xlabel('Shutter speed [ms]')
-        plt.ylabel('Hologram contrast')
-        plt.grid(True)
-        plt.show()
-        
-        # Save data
-        date=datetime.today().strftime('%Y%m%d')
-        plt.savefig('tables\\'+date+'\Log\shutter_curve_'+str(round(wl))+'_pm.png')
-        np.savetxt('tables\\'+date+'\Log\shutter_curve_'+str(round(wl))+'pm.txt',np.vstack((shutter,contrast)).T,header='wavelength [pm] \t shutter speed [ms]')
-        
+
+    date=datetime.today().strftime('%Y%m%d')
+
     # Save shutter table    
     optimal_shutter_list=np.asarray(optimal_shutter_list)
     wls = np.array(wls)

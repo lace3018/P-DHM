@@ -113,6 +113,9 @@ def setupExperiment():
     
         window = sg.Window('Parameters 1', layout, size=(300,300))
         event, values = window.read()
+        if event in (None, 'Cancel'):
+            window.close()
+            sys.exit()
         if values[0]==True:
             MonoOrPoly='P'
         else:
@@ -614,8 +617,8 @@ def setMotorSweepParameters():
         settings = sg.UserSettings()
         
         # Define default values for the inputs
-        default_step = settings.get('step', '50')
-        default_interval = settings.get('interval', '600')
+        default_step = settings.get('step', '15')
+        default_interval = settings.get('interval', '700')
         
         layout = [
             [sg.Text('Enter the motor step (in µm):')],
@@ -649,8 +652,7 @@ def setMotorSweepParameters():
         
         # Generate path
         date=datetime.today().strftime('%Y%m%d')
-        path = Path(r'\\172.16.1.103\data\DHM 1087\_P-DHM\PDHM_automated_acquisition\tables\%s'%(date))
-        pathlog=Path(r'\\172.16.1.103\data\DHM 1087\_P-DHM\PDHM_automated_acquisition\tables\%s\Log'%(date))
+        pathlog='tables\\'+date+'\Log'
         isExist=os.path.exists(pathlog)
         if not isExist:
             os.makedirs(pathlog)
@@ -660,7 +662,7 @@ def setMotorSweepParameters():
         OPL_array = setOPLarray(wavelengths,pathlog)
         shutter_array = setShutterArray(wavelengths,pathlog)
 
-        return path,MO,wavelengths,OPL_array,shutter_array,float(interval),float(step)
+        return MO,wavelengths,OPL_array,shutter_array,float(interval),float(step)
     
     except Exception as e:
         print(f"An error occurred while setting the motor sweep parameters: {str(e)}")
@@ -679,9 +681,8 @@ def setShutterSweepParameters():
         MO = setMicroscopeObjective()
         wavelengths = setWavelengthArray('P')
         OPL_array = setOPLarray(wavelengths,pathlog)
-        shutter_array = setShutterArray(wavelengths,pathlog)
 
-        return MO,wavelengths,OPL_array,shutter_array
+        return MO,wavelengths,OPL_array
     
     except Exception as e:
         print(f"An error occurred while setting the motor sweep parameters: {str(e)}")

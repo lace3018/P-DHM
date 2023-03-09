@@ -20,11 +20,11 @@ sleeptime=1/frameRate
 # Loop on video frames
 while True:
     elapsed_time=time.time()-starttime
+    if elapsed_time>=maxtime:
+        break
     print("\n\nFRAME ",frame,"\t elapsed time: ",elapsed_time)
     PDHM.Acquire(host, frame, starttime, path, wls, OPL_guesses, shutter_speeds)
     time.sleep(sleeptime - ((time.time()-starttime)%sleeptime))
-    if elapsed_time>maxtime:
-        break
     frame+=1
 
 PDHM.Reset(host, 666000)
