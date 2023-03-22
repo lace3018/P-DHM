@@ -75,7 +75,7 @@ def getOPLTable(fromMain=False,host_from_main=None):
     # Save OPL table    
     optimal_OPL_list=np.asarray(optimal_OPL_list)
     wls = np.array(wls)
-    np.savetxt('tables\\'+date+'\Table_OPL_'+sample+'.txt',np.vstack((wls/1000,optimal_OPL_list)).T,header='wavelength [nm] \t position [qc]')
+    np.savetxt(f"tables\\{date}\Table_OPL_{sample}_{MO}.txt",np.vstack((wls/1000,optimal_OPL_list)).T,header='wavelength [nm] \t position [qc]')
      
     # Timing
     end_time = time.time()
@@ -125,7 +125,7 @@ def getShutterTable(fromMain=False,host_from_main=None):
         max_pixel = [0]
         shutter_plot = [0]
         plt.ion()
-        figure, ax = plt.subplots(figsize=(12,5))
+        figure, ax = plt.subplots(figsize=(6,3))
         line1, = ax.plot(shutter_plot,max_pixel,'k-')
         plt.title(str(round(wl))+' pm')
         plt.xlabel('Exposition time [$\mu$s]')
@@ -144,8 +144,8 @@ def getShutterTable(fromMain=False,host_from_main=None):
                 host.SaveImageToFile(1,temp_dir+'holo_temp.tiff')
                 time.sleep(0.05)
                 temp_holo = tifffile.imread(temp_dir+'holo_temp.tiff')
-                if np.any(temp_holo == np.iinfo(temp_holo.dtype).max) and shutter>500:
-                    optimal_shutter_list.append(shutter-step)
+                if np.any(temp_holo == 250) and shutter>500:
+                    optimal_shutter_list.append(shutter)
                     print('\n*****\n optimal shutter for '+str(wl)+' pm: ',str(shutter-step),'\n*****\n')
                     break
                 mp = np.max(temp_holo)
@@ -181,7 +181,7 @@ def getShutterTable(fromMain=False,host_from_main=None):
     # Save shutter table    
     optimal_shutter_list=np.asarray(optimal_shutter_list)
     wls = np.array(wls)
-    np.savetxt('tables\\'+date+'\Table_shutter_'+sample+'.txt',np.vstack((wls/1000,optimal_shutter_list)).T,header='wavelength [nm] \t shutter speed [ms]')
+    np.savetxt(f'tables\{date}\Table_shutter_{sample}_{MO}.txt',np.vstack((wls/1000,optimal_shutter_list)).T,header='wavelength [nm] \t shutter speed [ms]')
     
     # Timing
     end_time = time.time()

@@ -54,7 +54,7 @@ def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step
     contrast=[host.GetHoloContrast()]
     pos=[positions[0]]
     plt.ion()
-    figure, ax = plt.subplots(figsize=(12,4))
+    figure, ax = plt.subplots(figsize=(6,3))
     line1, = ax.plot(pos,contrast,'k-')
     plt.title(str(round(wl))+' pm')
     plt.xlabel('Position [$\mu$m]')
