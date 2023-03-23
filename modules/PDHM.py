@@ -41,17 +41,16 @@ def Initialize(video=True):
     laser.LaserCheck()
     host=koala.KoalaLogin()
     
-    # Ask for OPL table update
-    update_shutter_bool = Inputs.getUpdateShutterChoice()
-
-    if update_shutter_bool==True:
-        gt.getShutterTable(fromMain=True,host_from_main=host)
-    
-    
+    # Ask for OPL table update        
     update_opl_bool = Inputs.getUpdateOPLChoice()
 
     if update_opl_bool==True:
         gt.getOPLTable(fromMain=True,host_from_main=host)
+    
+    update_shutter_bool = Inputs.getUpdateShutterChoice()
+
+    if update_shutter_bool==True:
+        gt.getShutterTable(fromMain=True,host_from_main=host)
         
     path,wls,OPL_guesses,shutter_speeds = Inputs.setupExperiment()
     
@@ -96,6 +95,7 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
     if frame==0:
         file.write("frame"+"\t"+"wavelength"+"\t"+"time"+"\t"+"shutter speed"+"\t"+"contrast"+"\n")
     
+    wavelength_id = 0
     contrast_list = []
     for i in range(len(wavelengths_array)):
         wavelength = wavelengths_array[i]
@@ -117,6 +117,10 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
         os.makedirs(wavelength_dir, exist_ok=True)
         image_filename = os.path.join(wavelength_dir, 'Hologram.tiff')
         host.SaveImageToFile(1, image_filename)
+        if wavelength==660000:
+            print('entered 660 if statement')
+            host.SaveImageToFile(4,f'{wavelength_dir}/Phase.png')
+            wavelength_id = i+1
         contrast = host.GetHoloContrast()
         file.write(str(frame)+"\t"+str(int(wavelength))+"\t"+str(time.time()-starttime)+"\t"+str(shutter_speeds[i])+"\t"+str(contrast)+"\n")
         file.close
@@ -130,6 +134,8 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
     path_contrast = str(path)+'/Log/contrast'
     os.makedirs(path_contrast, exist_ok=True)
     dp.plotContrast(frame,wavelengths_array,contrast_list,path_contrast,'contrast_frame'+str(frame))
+    if 660000 in wavelengths_array:
+        dp.displayPhaseImage(f'{path}/{frame}/660000_{wavelength_id}/Phase.png')
     
     laser.RFPowerOff()
     time.sleep(0.1)

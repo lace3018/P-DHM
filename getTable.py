@@ -84,7 +84,9 @@ def getOPLTable(fromMain=False,host_from_main=None):
     laser.RFPowerOff()
     time.sleep(0.3)
     laser.RFSwitch(RFSwitchState)
-    time.sleep(0.3)    
+    time.sleep(0.3)  
+    
+    laser.CloseAll()
 
 
 def getShutterTable(fromMain=False,host_from_main=None):    

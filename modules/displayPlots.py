@@ -4,8 +4,9 @@ Created on Wed Mar  1 09:18:54 2023
 
 @author: Celine
 """
-
+import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
 
 def set_plotting_style():
   plt.rcParams['axes.grid'] = False
@@ -48,7 +49,7 @@ def plotContrast(frame, wls, contrasts, savepath, savename):
         set_plotting_style()
         x = wls/1000
         y = contrasts
-
+        plt.figure()
         plt.stem(x, y, linefmt='k-', markerfmt='ko', use_line_collection = True)
         plt.fill_between(x, y1=max(contrasts), y2=20,color='green',alpha=0.3,label='Good contrast')
         plt.fill_between(x, y1=20, y2=10,color='yellow',alpha=0.3,label='OK contrast')
@@ -62,3 +63,12 @@ def plotContrast(frame, wls, contrasts, savepath, savename):
         plt.show()
     except Exception as e:
         print(f"An error occurred while plotting the contrast: {str(e)}")
+        
+
+def displayPhaseImage(input_path):
+    # plt.close('all')
+    image = np.asarray(Image.open(input_path))
+    plt.figure()
+    plt.imshow(image,cmap='gray')
+    plt.title('Phase image')
+    plt.show()

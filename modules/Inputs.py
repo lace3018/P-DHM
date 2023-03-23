@@ -369,8 +369,11 @@ def setWavelengthArray(MonoOrPoly):
                     min_value = int(values['min_value']*1000)
                     max_value = int(values['max_value']*1000)
                     # Generate the array
-                    step = (max_value - min_value) / (num_values - 1)
-                    wls_array = [round(min_value + step * i) for i in range(num_values)]
+                    if num_values == 1:
+                        wls_array = [min_value]
+                    else:
+                        step = (max_value - min_value) / (num_values - 1)
+                        wls_array = [round(min_value + step * i) for i in range(num_values)]
                     break
             
             window.close()
@@ -381,6 +384,7 @@ def setWavelengthArray(MonoOrPoly):
                 wls_array = np.insert(wls_array,ii,wl2add)
             
             wls_array = np.asarray(wls_array).astype('float')
+            print(wls_array)
             return wls_array
         
         else:
