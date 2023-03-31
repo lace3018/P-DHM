@@ -22,13 +22,31 @@ import time
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 import tempfile
 import tifffile
+import datetime as dt
+import os
+
+
+def uniquify(path):
+    '''
+    Adds extension to path if it exists
+    '''
+    current_time = dt.datetime.now()
+    while os.path.exists(path):
+        path = path + "_" + str(current_time.hour) + "h" + str(current_time.minute)
+
+    return path
+
 
 def getOPLTable(fromMain=False,host_from_main=None):  
     
     date=datetime.today().strftime('%Y%m%d')
+    path_save = uniquify(f"tables\{date}") # this line adds an extension to the file path if it exists
+    isExist=os.path.exists(path_save)
+    if not isExist:
+        os.makedirs(f"{path_save}\Log")
+    
     laser.LaserCheck()
     laser.EmissionOn()
     laser.setAmplitude(100)
@@ -68,14 +86,14 @@ def getOPLTable(fromMain=False,host_from_main=None):
         optimal_OPL_list.append(optimal_OPL)
         
         # Save 
-        plt.savefig('tables\\'+date+'\Log\opl_curve_'+str(round(wl))+'_pm.png')
-        np.savetxt('tables\\'+date+'\Log\opl_curve_'+str(round(wl))+'pm.txt',np.vstack((pos,contrast)).T,header='wavelength [pm] \t position [qc]')
+        plt.savefig(f"{path_save}\Log\opl_curve_{str(round(wl))}_pm.png")
+        np.savetxt(f"{path_save}\Log\opl_curve_{str(round(wl))}pm.txt",np.vstack((pos,contrast)).T,header='wavelength [pm] \t position [qc]')
         
         
     # Save OPL table    
     optimal_OPL_list=np.asarray(optimal_OPL_list)
     wls = np.array(wls)
-    np.savetxt(f"tables\\{date}\Table_OPL_{sample}_{MO}.txt",np.vstack((wls/1000,optimal_OPL_list)).T,header='wavelength [nm] \t position [qc]')
+    np.savetxt(f"{path_save}\Table_OPL_{sample}_{MO}.txt",np.vstack((wls/1000,optimal_OPL_list)).T,header='wavelength [nm] \t position [qc]')
      
     # Timing
     end_time = time.time()

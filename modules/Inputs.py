@@ -482,7 +482,7 @@ def setOPLarray(wls, path_log):
         
         # Interpolation
         OPL_from_table = np.loadtxt(oplPath,skiprows=1).T
-        interpolation_function = interp1d(OPL_from_table[0],OPL_from_table[1],kind='quadratic',bounds_error=False,fill_value=-10.)
+        interpolation_function = interp1d(OPL_from_table[0],OPL_from_table[1],kind='linear',bounds_error=False,fill_value=-10.)
         
         # Arrays to display the interpolation function on the graph
         wls_for_display = np.linspace(OPL_from_table[0][0],OPL_from_table[0][-1],1000)
@@ -548,7 +548,7 @@ def setShutterArray(wls, path_log):
         
         # Interpolation
         shutter_from_table = np.loadtxt(shutterPath,skiprows=1).T
-        interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[1]*0.7,kind='quadratic',bounds_error=False,fill_value=-10.) #TODO: ne pas hardcoder le 95% du shutter
+        interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[1]*0.7,kind='linear',bounds_error=False,fill_value=-10.) #TODO: ne pas hardcoder le 95% du shutter
         
         # Arrays to display the interpolation function on the graph
         wls_for_display = np.linspace(shutter_from_table[0][0],shutter_from_table[0][-1],1000)

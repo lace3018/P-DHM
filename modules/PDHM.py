@@ -116,33 +116,28 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
         wavelength_dir = os.path.join(path, str(frame), str(int(wavelength)) + '_' + str(i+1))
         os.makedirs(wavelength_dir, exist_ok=True)
         image_filename = os.path.join(wavelength_dir, 'Hologram.tiff')
+        contrast = host.GetHoloContrast()
         host.SaveImageToFile(1, image_filename)
         if wavelength==660000:
             print('entered 660 if statement')
             host.SaveImageToFile(4,f'{wavelength_dir}/Phase.png')
             wavelength_id = i+1
-        contrast = host.GetHoloContrast()
         file.write(str(frame)+"\t"+str(int(wavelength))+"\t"+str(time.time()-starttime)+"\t"+str(shutter_speeds[i])+"\t"+str(contrast)+"\n")
         file.close
         contrast_list.append(contrast)
-    
-    if min(contrast_list) < 5:
-        print("\n\n !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n")
-        print("WARNING: Low hologram contrast detected")
-        print("\n !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
-    
+
     path_contrast = str(path)+'/Log/contrast'
     os.makedirs(path_contrast, exist_ok=True)
     dp.plotContrast(frame,wavelengths_array,contrast_list,path_contrast,'contrast_frame'+str(frame))
     if 660000 in wavelengths_array:
-        dp.displayPhaseImage(f'{path}/{frame}/660000_{wavelength_id}/Phase.png')
+        dp.displayPhaseImage(f'{path}/{frame}/660000_{wavelength_id}/Phase.png', frame)
     
     laser.RFPowerOff()
     time.sleep(0.1)
     laser.RFSwitch(laser.readRFSwitch())
     time.sleep(0.1)
     
-def Reset(host,wavelength):
+def Reset(host,wavelength,opl):
     '''
     Resets laser to given wavelength.
 
@@ -158,6 +153,6 @@ def Reset(host,wavelength):
     '''
     laser.EmissionOn()
     print('\n\n Wavelength reseted to find next FOV')
-    host.MoveOPL(-403563)#20X : (-403563) ; 5X : (-196000); 10X : (-318160) # TO DO : METTRE LA VALEUR ASSOCIÉE A LA LONGUEUR D'ONDE DONNÉE PAR L'UTILISATEUR
+    host.MoveOPL(opl)#20X : (-403563) ; 5X : (-196000); 10X : (-318160) # TO DO : METTRE LA VALEUR ASSOCIÉE A LA LONGUEUR D'ONDE DONNÉE PAR L'UTILISATEUR
     host.SetCameraShutterUs((0.37-0.37*0.18)*1e3)                           # TO DO : METTRE LA VALEUR ASSOCIÉE A LA LONGUEUR D'ONDE DONNÉE PAR L'UTILISATEUR
     laser.setWavelength(wavelength)

@@ -65,10 +65,13 @@ def plotContrast(frame, wls, contrasts, savepath, savename):
         print(f"An error occurred while plotting the contrast: {str(e)}")
         
 
-def displayPhaseImage(input_path):
+def displayPhaseImage(input_path, frame):
+    
     # plt.close('all')
     image = np.asarray(Image.open(input_path))
     plt.figure()
-    plt.imshow(image,cmap='gray')
-    plt.title('Phase image')
+    plt.imshow(image,cmap='gray') 
+    plt.xticks([])
+    plt.yticks([])
+    plt.title('Phase image | frame '+str(frame+1)+' | 660 nm')
     plt.show()

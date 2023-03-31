@@ -8,6 +8,7 @@ Created on Mon Aug  8 14:13:29 2022
 from . import laserCommands as laser
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step=5): 
     '''
@@ -62,6 +63,7 @@ def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step
     plt.grid(True)
     for p in positions:
         host.MoveOPL(p) # moving motor to position
+        time.sleep(shutter_speed*1e-6*10)
         contrast.append(host.GetHoloContrast()) # save contrast
         pos.append(p) # save position    
         

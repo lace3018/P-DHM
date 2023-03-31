@@ -7,10 +7,11 @@ Main script for running a P-DHM acquisition.
 @author: lace3018
 """
 
+import numpy as np
 import modules.PDHM as PDHM
 import time
 
-host,path,frameRate,maxtime,wls,OPL_guesses,shutter_speeds = PDHM.Initialize() # Assigns values to the variables required for P-DHM acquisition.
+host,path,frameRate,maxtime,wls,OPL_array,shutter_speeds = PDHM.Initialize() # Assigns values to the variables required for P-DHM acquisition.
 
 # Video parameters initialization
 frame = 0
@@ -23,9 +24,10 @@ while True:
     if elapsed_time>=maxtime:
         break
     print("\n\nFRAME ",frame,"\t elapsed time: ",elapsed_time)
-    PDHM.Acquire(host, frame, starttime, path, wls, OPL_guesses, shutter_speeds)
+    PDHM.Acquire(host, frame, starttime, path, wls, OPL_array, shutter_speeds)
     time.sleep(sleeptime - ((time.time()-starttime)%sleeptime))
     frame+=1
 
-PDHM.Reset(host, 666000)
+wl_reset = 666000
+PDHM.Reset(host, wl_reset, OPL_array[np.abs(wls - wl_reset).argmin()])
 host.Logout()
