@@ -6,7 +6,12 @@ Created on Wed Mar  1 09:18:54 2023
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from PIL import Image
+import imageio
+import warnings
+warnings.filterwarnings("ignore")
+
 
 def set_plotting_style():
   plt.rcParams['axes.grid'] = False
@@ -65,7 +70,18 @@ def plotContrast(frame, wls, contrasts, savepath, savename):
         print(f"An error occurred while plotting the contrast: {str(e)}")
         
 
-def displayPhaseImage(input_path, frame):
+def displayPhaseImage(input_path, wl, frame):
+    
+    plt.close('all')
+    image = np.asarray(Image.open(input_path))
+    plt.figure()
+    plt.imshow(image,cmap='turbo') 
+    plt.xticks([])
+    plt.yticks([])
+    plt.title(f'Phase image | frame {str(frame+1)} | {wl} pm')
+    plt.show()
+    
+def displayIntensityImage(input_path, frame):
     
     # plt.close('all')
     image = np.asarray(Image.open(input_path))
@@ -73,5 +89,117 @@ def displayPhaseImage(input_path, frame):
     plt.imshow(image,cmap='gray') 
     plt.xticks([])
     plt.yticks([])
-    plt.title('Phase image | frame '+str(frame+1)+' | 660 nm')
+    plt.title('Intensity image')
     plt.show()
+    
+
+def displayAll(path_holo, path_intensity, path_phase, wavelength, frame):
+    plt.close('all')
+
+    # Create a list of image paths
+    image_paths = [path_holo, path_intensity, path_phase]
+    image_types = ['Hologram', 'Intensity', 'Phase']
+
+    # Create a figure and axes for the grid
+    fig, axes = plt.subplots(1, 3, figsize=(18,6))
+
+    # Iterate over the axes and image paths
+    for ax, image_path, image_type in zip(axes.flatten(), image_paths, image_types):
+        # Load the image using plt.imread
+        image = plt.imread(image_path)
+
+        # Display the image on the current axis
+        ax.imshow(image, cmap='turbo')
+        ax.axis('off')
+
+        # Add a dummy title to each image
+        ax.set_title(f'{image_type}')
+
+        # Add zoomed region for the hologram
+        if image_type == 'Hologram':
+            # Define the zoomed region (bottom right, 50x50 pixels)
+            zoom_region = image[-50:, -50:]
+            # Create the inset axes
+            axins = inset_axes(ax, width="30%", height="30%", loc="lower right")
+            # Display the zoomed region
+            axins.imshow(zoom_region, cmap='turbo')
+            axins.axis('off')
+
+    # Add a title to the whole figure
+    fig.suptitle(f'{wavelength} pm | frame {frame}')
+
+    # Show the plot
+    plt.show()
+    
+    
+def display_average_phase(path, wavelengths, frame):
+    print(path, wavelengths, frame)
+    plt.close('all')
+
+    # Create a figure and axes for the grid
+    plt.figure()
+
+    # Initialize the sum of the phases
+    phase_sum = 0
+    for wl, i in zip(wavelengths, range(len(wavelengths))):
+        # Read the image using imageio
+        phase_path = f'{path}/{frame}/{str(int(wl))}_{i+1}/Phase.tiff'
+        phase = imageio.imread(phase_path)
+
+        # Convert to float to ensure proper arithmetic
+        phase = phase.astype(float)
+        phase_sum += phase
+
+    average_phase = phase_sum / len(wavelengths)
+
+    # Display the image on the current axis
+    plt.imshow(average_phase, cmap='turbo')
+    plt.axis('off')
+
+    # Add a dummy title to each image
+    plt.title(f'Phase average frame {frame}')
+
+    # Show the plot
+    plt.show()
+
+
+def displayInt_and_phase(path_intensity, path_phase, wavelength, frame):
+    plt.close('all')
+    
+    # Create a list of image paths
+    image_paths = [path_intensity, path_phase]
+    image_types = ['Intensity', 'Phase']
+    
+    # Create a figure and axes for the grid
+    fig, axes = plt.subplots(1, 2)
+    
+    # Iterate over the axes and image paths
+    for ax, image_path, image_type in zip(axes.flatten(), image_paths, image_types):
+        # Load the image using plt.imread
+        image = plt.imread(image_path)
+    
+        # Display the image on the current axis
+        ax.imshow(image, cmap='turbo')
+        ax.axis('off')
+    
+        # Add a dummy title to each image
+        ax.set_title(f'{image_type}')
+    
+    # Add a title to the whole figure
+    fig.suptitle(f'{wavelength} pm | frame {frame}')
+    
+    # Adjust the spacing between subplots
+    plt.tight_layout()
+    
+    # Show the plot
+    plt.show()
+
+def close():
+    plt.close('all')
+    
+    
+def plotOPLcurves(pos, contrast, path):
+    plt.close('all')
+    plt.figure()
+    plt.plot(pos, contrast)
+    plt.savefig('temp.png')

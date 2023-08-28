@@ -9,9 +9,11 @@ import modules.laserCommands as laser
 import modules.koalaCommands as koala
 import modules.Inputs as Inputs
 import modules.displayPlots as dp
-import getTable as gt
+import modules.checkHolos as checkHolos
 import time
 import os
+import sys
+import numpy as np
 
 def Initialize(video=True):
     '''
@@ -40,34 +42,26 @@ def Initialize(video=True):
     time.sleep(1)
     laser.LaserCheck()
     host=koala.KoalaLogin()
+            
+    path,wls,OPL_guesses,shutter_speeds = Inputs.setupExperiment(host)
     
-    # Ask for OPL table update        
-    update_opl_bool = Inputs.getUpdateOPLChoice()
-
-    if update_opl_bool==True:
-        gt.getOPLTable(fromMain=True,host_from_main=host)
-    
-    update_shutter_bool = Inputs.getUpdateShutterChoice()
-
-    if update_shutter_bool==True:
-        gt.getShutterTable(fromMain=True,host_from_main=host)
-        
-    path,wls,OPL_guesses,shutter_speeds = Inputs.setupExperiment()
-    
+    if path==None:
+        Reset(host, 660000, -400358)
+        sys.exit()
     if video==True:
         frameRate,maxtime = Inputs.setVideoParameters()
-
-    print('---\nP-DHM SEQUENCE INITIALIZATION')
-    laser.EmissionOn()
-    laser.setWavelength(wls[0])
-    time.sleep(0.2)
-    laser.setAmplitude(0)
-    time.sleep(0.2)
-    print('---')
-    if video==True:
         return host,path,frameRate,maxtime,wls,OPL_guesses,shutter_speeds
     else:
         return host,path,wls,OPL_guesses,shutter_speeds
+    
+    
+def get_version():
+    version_file_path = os.path.dirname(os.path.realpath(__file__))
+    version_file_path = os.path.dirname(version_file_path)  # this line gets us one directory up to the "main.py" folder
+    with open(os.path.join(version_file_path, 'version.txt'), 'r') as f:
+        version = f.read().strip()  # Read the version and remove any leading/trailing whitespace
+    return version
+
 
 def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_speeds):
     '''
@@ -86,6 +80,22 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
     Returns:
         None
     '''
+    # Pre-creating the directories to store the images
+    holo_filenames = []
+    phase_filenames = []
+    intensity_filenames = []
+    
+    for wavelength,i in zip(wavelengths_array,range(len(wavelengths_array))):
+        wavelength_dir = os.path.join(path, str(frame), str(int(wavelength)) + '_' + str(i+1))
+        os.makedirs(wavelength_dir, exist_ok=True)
+        
+        holo_filenames.append(os.path.join(wavelength_dir, 'Hologram.tiff'))
+        phase_filenames.append(os.path.join(wavelength_dir, 'Phase.tiff'))
+        intensity_filenames.append(os.path.join(wavelength_dir, 'Intensity.png'))
+    
+    # Starting the laser
+    laser.EmissionOn()
+    time.sleep(0.2)
     laser.RFPowerOn()
     laser.setAmplitude(100)
     RFSwitchState = laser.readRFSwitch()
@@ -93,47 +103,49 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
     log_filename = os.path.join(path, 'Log', 'Log.txt')
     file = open(log_filename, "a")
     if frame==0:
-        file.write("frame"+"\t"+"wavelength"+"\t"+"time"+"\t"+"shutter speed"+"\t"+"contrast"+"\n")
+        version = get_version()
+        file.write(f'Acquisition code version: {version}\n')
+        file.write("frame"+"\t"+"wavelength"+"\t"+"time"+"\t"+"shutter speed"+"\n")
     
-    wavelength_id = 0
-    contrast_list = []
+    # Acquisition loop
     for i in range(len(wavelengths_array)):
         wavelength = wavelengths_array[i]
         laser.setWavelength(wavelength)
         host.MoveOPL(OPL_guesses[i])
         host.SetCameraShutterUs((shutter_speeds[i])) # set camera to preset shutter value
-
-        if laser.switchCrystalCondition(wavelength,RFSwitchState) == 1:
-            laser.RFPowerOff()
-            time.sleep(0.25)
-            laser.RFSwitch(RFSwitchState)
-            laser.RFPowerOn()
-            RFSwitchState = laser.readRFSwitch()          
-            laser.setWavelength(wavelength)
-            time.sleep(0.1)
         
-        time.sleep(0.2) # ADDED 2022-10-21 TO TEMPORARILY FIX BAD HOLOGRAMS OCCURING ON RANDOM WAVELENGTHS -CLL
-        wavelength_dir = os.path.join(path, str(frame), str(int(wavelength)) + '_' + str(i+1))
-        os.makedirs(wavelength_dir, exist_ok=True)
-        image_filename = os.path.join(wavelength_dir, 'Hologram.tiff')
-        contrast = host.GetHoloContrast()
-        host.SaveImageToFile(1, image_filename)
-        if wavelength==660000:
-            print('entered 660 if statement')
-            host.SaveImageToFile(4,f'{wavelength_dir}/Phase.png')
-            wavelength_id = i+1
-        file.write(str(frame)+"\t"+str(int(wavelength))+"\t"+str(time.time()-starttime)+"\t"+str(shutter_speeds[i])+"\t"+str(contrast)+"\n")
-        file.close
-        contrast_list.append(contrast)
-
-    path_contrast = str(path)+'/Log/contrast'
-    os.makedirs(path_contrast, exist_ok=True)
-    dp.plotContrast(frame,wavelengths_array,contrast_list,path_contrast,'contrast_frame'+str(frame))
-    if 660000 in wavelengths_array:
-        dp.displayPhaseImage(f'{path}/{frame}/660000_{wavelength_id}/Phase.png', frame)
+        if laser.check_for_crystal_switch(wavelength, RFSwitchState) == True:
+            laser.switchCrystal(RFSwitchState)
+            RFSwitchState = 1
+        
+        time.sleep(0.15) # SLEEP ADDED TO AVOID LATENCY ISSUES
+        host.ComputePhaseCorrection(0,1) # TILT CORRECTION
+        
+        host.SaveImageToFile(1, holo_filenames[i])
+        host.SaveImageToFile(2, intensity_filenames[i])
+        host.SaveImageToFile(4, phase_filenames[i])
+        
+        file.write(str(frame)+"\t"+str(int(wavelength))+"\t"+str(time.time()-starttime)+"\t"+str(shutter_speeds[i])+"\n")
+        
+        # dp.displayAll(holo_filenames[i], intensity_filenames[i], phase_filenames[i], wavelength, frame)
+    
+    # dp.close()
+    file.close()
     
     laser.RFPowerOff()
-    time.sleep(0.1)
+    
+    # Display phase at 660 nm
+    dp.displayPhaseImage(phase_filenames[np.argmin(np.abs(wavelengths_array-660000))], 660000, frame)
+    
+    # Check holograms for fringes
+    fringe_file_path = f'{path}/Log/fringes_results.txt'
+    
+    with open(fringe_file_path, 'a') as fringe_file:
+        for wl, i in zip(wavelengths_array, range(len(wavelengths_array))):
+            has_fringes = checkHolos.detect_fringes(holo_filenames[i], wl, frame)
+            print(wl, 'pm | Fringes detected : ', has_fringes)
+            fringe_file.write(f"Frame {frame} | {wl} pm | Fringes detected : {has_fringes}\n")
+
     laser.RFSwitch(laser.readRFSwitch())
     time.sleep(0.1)
     
@@ -156,3 +168,6 @@ def Reset(host,wavelength,opl):
     host.MoveOPL(opl)#20X : (-403563) ; 5X : (-196000); 10X : (-318160) # TO DO : METTRE LA VALEUR ASSOCIÉE A LA LONGUEUR D'ONDE DONNÉE PAR L'UTILISATEUR
     host.SetCameraShutterUs((0.37-0.37*0.18)*1e3)                           # TO DO : METTRE LA VALEUR ASSOCIÉE A LA LONGUEUR D'ONDE DONNÉE PAR L'UTILISATEUR
     laser.setWavelength(wavelength)
+    time.sleep(0.5)
+    host.ComputePhaseCorrection(0,1) # TILT CORRECTION
+    host.Logout()

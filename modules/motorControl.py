@@ -10,7 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step=5): 
+
+def balanceInterferometer(host, wl, OPL_guess, shutter_speed, path, half_interval=200, step=5, saveHolo=False): 
     '''
     Sweeps motor positions for selected wavelengths and records maximal contrast.
 
@@ -39,48 +40,111 @@ def balanceInterferometer(host,wl,OPL_guess,shutter_speed,half_interval=200,step
         Array of optimal positions for each wl (max contrast).
 
     '''
-    half_interval_qc = half_interval*19.714
-    step_qc = step*19.714
-    # RFSwitchState=laser.readRFSwitch()
-    # laser.EmissionOn()
-    # laser.RFSwitch(RFSwitchState)
+    # Convert to qc units
+    QC_CONVERSION_FACTOR = 19.714
+    half_interval_qc = half_interval * QC_CONVERSION_FACTOR
+    step_qc = step * QC_CONVERSION_FACTOR
+
+    # Setup the laser and camera
     laser.setAmplitude(100)
-    # RFSwitchState = laser.readRFSwitch()
-    
     laser.setWavelength(wl)
-    host.SetCameraShutterUs(shutter_speed)
+    host.SetCameraShutterUs(0.3*shutter_speed)
+
+    # Create array of positions
     initPos = int(OPL_guess)
     positions = np.arange(initPos-half_interval_qc,initPos+half_interval_qc,step_qc)
-    host.MoveOPL(positions[0])
-    contrast=[host.GetHoloContrast()]
-    pos=[positions[0]]
-    plt.ion()
-    figure, ax = plt.subplots(figsize=(6,3))
+
+    contrast = []
+    pos = []
+
+    # Setup plot
+    figure, ax = plt.subplots(figsize=(12,6))
     line1, = ax.plot(pos,contrast,'k-')
     plt.title(str(round(wl))+' pm')
     plt.xlabel('Position [$\mu$m]')
     plt.ylabel('Contrast')
     plt.grid(True)
+
+    # Sweep positions
     for p in positions:
-        host.MoveOPL(p) # moving motor to position
-        time.sleep(shutter_speed*1e-6*10)
-        contrast.append(host.GetHoloContrast()) # save contrast
-        pos.append(p) # save position    
+        host.MoveOPL(p) 
+        time.sleep(0.1)
+
+        # Update contrast and position data
+        contrast.append(host.GetHoloContrast())
+        pos.append(p)
         
+        # Update plot data and redraw
         line1.set_xdata(qc2um(pos))
         line1.set_ydata(contrast)
         ax.set_xlim(qc2um(pos[0]),qc2um(pos[-1]))
         ax.set_ylim(np.min(contrast),np.max(contrast))
         figure.canvas.draw()
         figure.canvas.flush_events()
-        # time.sleep(0.1)
-    plt.close()   
-    pos=np.asarray(pos)
-    contrast=np.asarray(contrast)
-    optimal_OPL=pos[contrast.argmax()] # Extracting position for max holo contrast
+
+    plt.close() 
+
+    # Convert lists to numpy arrays
+    pos = np.asarray(pos)
+    contrast = np.asarray(contrast)
+
+    # Find position with maximum contrast
+    optimal_OPL = pos[contrast.argmax()]
+
+    return pos, contrast, optimal_OPL
+
+
+def findCenterPosition(host): 
+    # Setup the laser and camera
+    laser.setAmplitude(100)
+    laser.setWavelength(660000)
+    host.SetCameraShutterUs(1230)
+
+    # Create array of positions
+    positions = np.linspace(2000,8000,300)
+    positions_qc = um2qc(positions)
+    print(positions_qc)
     
-    
-    return pos,contrast,optimal_OPL 
+    contrast = []
+    pos = []
+
+    # Setup plot
+    figure, ax = plt.subplots(figsize=(12,6))
+    line1, = ax.plot(pos,contrast,'k-')
+    plt.title('Full range at 660 nm')
+    plt.xlabel('Position [$\mu$m]')
+    plt.ylabel('Contrast')
+    plt.grid(True)
+
+    # Sweep positions
+    for p in positions_qc:
+        host.MoveOPL(p) 
+        time.sleep(0.1)
+
+        # Update contrast and position data
+        contrast.append(host.GetHoloContrast())
+        pos.append(p)
+        
+        # Update plot data and redraw
+        line1.set_xdata(qc2um(pos))
+        line1.set_ydata(contrast)
+        ax.set_xlim(qc2um(pos[0]),qc2um(pos[-1]))
+        ax.set_ylim(np.min(contrast),np.max(contrast))
+        figure.canvas.draw()
+        figure.canvas.flush_events()
+
+    plt.close() 
+
+    # Convert lists to numpy arrays
+    pos = np.asarray(pos)
+    contrast = np.asarray(contrast)
+
+    # Find position with maximum contrast
+    optimal_OPL = pos[contrast.argmax()]
+
+    return optimal_OPL
+
+
 
 def qc2um(pos_qc):
     if isinstance(pos_qc,list)==True:
@@ -93,8 +157,8 @@ def qc2um(pos_qc):
 def um2qc(pos_um):
     if isinstance(pos_um,list)==True:
         pos_qc = [(p*19.714)-511507 for p in pos_um]
-        return pos_um
+        return pos_qc
     else:
-        pos_um = (pos_qc*19.714)-511507
-        return pos_um
+        pos_qc = (pos_um*19.714)-511507
+        return pos_qc
     

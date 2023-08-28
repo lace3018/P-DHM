@@ -30,4 +30,3 @@ while True:
 
 wl_reset = 666000
 PDHM.Reset(host, wl_reset, OPL_array[np.abs(wls - wl_reset).argmin()])
-host.Logout()

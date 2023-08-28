@@ -16,77 +16,77 @@ import sys
 
 sg.theme('DefaultNoMoreNagging')
 
-def getUpdateShutterChoice():
-    '''
-    This function creates a GUI window to ask the user whether they want to update the shutter table. The function returns a boolean value indicating the user's choice. 
+# def getUpdateShutterChoice():
+#     '''
+#     This function creates a GUI window to ask the user whether they want to update the shutter table. The function returns a boolean value indicating the user's choice. 
 
-    Returns
-    -------
-    update_shutter : BOOL
-    '''
-    try:
-        update_opl = False
-        layout = [[sg.Text('Do you need to update the shutter table?')],
-                  [sg.Button('Yes'), sg.Button('No')]]
+#     Returns
+#     -------
+#     update_shutter : BOOL
+#     '''
+#     try:
+#         update_opl = False
+#         layout = [[sg.Text('Do you need to update the shutter table?')],
+#                   [sg.Button('Yes'), sg.Button('No')]]
     
-        window = sg.Window('Update shutter table', layout)
+#         window = sg.Window('Update shutter table', layout)
     
-        while True:
-            event, values = window.read()
-            if event == sg.WINDOW_CLOSED:
-                update_shutter = False  # default value if window is closed
-                window.close()
-                sys.exit()
-            elif event == 'Yes':
-                update_shutter = True
-                break
-            elif event == 'No':
-                update_shutter = False
-                break
+#         while True:
+#             event, values = window.read()
+#             if event == sg.WINDOW_CLOSED:
+#                 update_shutter = False  # default value if window is closed
+#                 window.close()
+#                 sys.exit()
+#             elif event == 'Yes':
+#                 update_shutter = True
+#                 break
+#             elif event == 'No':
+#                 update_shutter = False
+#                 break
     
-        window.close()
+#         window.close()
     
-        return update_shutter
-    except Exception as e:
-        print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
-
-
-def getUpdateOPLChoice():
-    '''
-    This function creates a GUI window to ask the user whether they want to update the OPL table. The function returns a boolean value indicating the user's choice. 
-
-    Returns
-    -------
-    update_opl : BOOL
-    '''
-    try:
-        update_opl = False
-        layout = [[sg.Text('Do you need to update the OPL table?')],
-                  [sg.Button('Yes'), sg.Button('No')]]
-    
-        window = sg.Window('Update OPL table', layout)
-    
-        while True:
-            event, values = window.read()
-            if event == sg.WINDOW_CLOSED:
-                update_opl = False  # default value if window is closed
-                window.close()
-                sys.exit()
-            elif event == 'Yes':
-                update_opl = True
-                break
-            elif event == 'No':
-                update_opl = False
-                break
-    
-        window.close()
-    
-        return update_opl
-    except Exception as e:
-        print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
+#         return update_shutter
+#     except Exception as e:
+#         print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
 
 
-def setupExperiment():
+# def getUpdateOPLChoice():
+#     '''
+#     This function creates a GUI window to ask the user whether they want to update the OPL table. The function returns a boolean value indicating the user's choice. 
+
+#     Returns
+#     -------
+#     update_opl : BOOL
+#     '''
+#     try:
+#         update_opl = False
+#         layout = [[sg.Text('Do you need to update the OPL table?')],
+#                   [sg.Button('Yes'), sg.Button('No')]]
+    
+#         window = sg.Window('Update OPL table', layout)
+    
+#         while True:
+#             event, values = window.read()
+#             if event == sg.WINDOW_CLOSED:
+#                 update_opl = False  # default value if window is closed
+#                 window.close()
+#                 sys.exit()
+#             elif event == 'Yes':
+#                 update_opl = True
+#                 break
+#             elif event == 'No':
+#                 update_opl = False
+#                 break
+    
+#         window.close()
+    
+#         return update_opl
+#     except Exception as e:
+#         print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
+
+
+def setupExperiment(host):
     '''
     This function sets up the parameters for a P-DHM experiment, including 
     wavelengths, OPL array, and shutter array. It prompts the user to choose 
@@ -115,7 +115,7 @@ def setupExperiment():
         event, values = window.read()
         if event in (None, 'Cancel'):
             window.close()
-            sys.exit()
+            return None, None, None, None
         if values[0]==True:
             MonoOrPoly='P'
         else:
@@ -127,8 +127,8 @@ def setupExperiment():
         userID,saveFolder,saveSubFolder = setSavingParameters()                   
         wavelengths = setWavelengthArray(MonoOrPoly)       
         path,pathlog = setupPath(userID,'RawData',datetime.today().strftime('%Y%m%d'),MO,saveFolder,saveSubFolder)
-        OPL_array = setOPLarray(wavelengths, pathlog)
-        shutter_array = setShutterArray(wavelengths, pathlog)
+        OPL_array = setOPLarray(wavelengths)
+        shutter_array = setShutterArray(wavelengths)
         
         np.savetxt(str(pathlog)+'\wavelengths.txt',wavelengths)
         
@@ -136,6 +136,7 @@ def setupExperiment():
     
     except Exception as e:
         print(f"An error occurred while setting up the experiment: {str(e)}")
+        host.Logout()
         sys.exit()
 
 
@@ -150,43 +151,39 @@ def setMicroscopeObjective():
         Microscope objective magnification.
 
     '''
-    try:
-        settings = sg.UserSettings()
-        magnification = settings.get('-MAGNIFICATION-', '20x')
-        
-        layout = [
-            [sg.Text('Select microscope magnification:')],
-            [sg.Radio('10x', 'MAGNIFICATION', key='-10X-', default=magnification=='10x')],
-            [sg.Radio('20x', 'MAGNIFICATION', key='-20X-', default=magnification=='20x')],
-            [sg.Radio('40x', 'MAGNIFICATION', key='-40X-', default=magnification=='40x')],
-            [sg.Radio('100x', 'MAGNIFICATION', key='-100X-', default=magnification=='100x')],
-            [sg.Button('Submit'), sg.Button('Cancel')]
-        ]
-        
-        window = sg.Window('Microscope Magnification Selector', layout)
-        
-        while True:
-            event, values = window.read()
-            if event in (None, 'Cancel'):
-                window.close()
-                sys.exit()
-            elif event == 'Submit':
-                if values['-10X-']:
-                    MO = '10x'
-                elif values['-20X-']:
-                    MO = '20x'
-                elif values['-40X-']:
-                    MO = '40x'
-                else:
-                    MO = '100x'
-                settings['-MAGNIFICATION-'] = MO
-                break   
-        window.close()
-        
-        return MO
-    except Exception as e:
-        print(f"An error occurred while setting up the microscope objective: {str(e)}")
-        sys.exit()
+    settings = sg.UserSettings()
+    magnification = settings.get('-MAGNIFICATION-', '20x')
+    
+    layout = [
+        [sg.Text('Select microscope magnification:')],
+        [sg.Radio('10x', 'MAGNIFICATION', key='-10X-', default=magnification=='10x')],
+        [sg.Radio('20x', 'MAGNIFICATION', key='-20X-', default=magnification=='20x')],
+        [sg.Radio('40x', 'MAGNIFICATION', key='-40X-', default=magnification=='40x')],
+        [sg.Radio('100x', 'MAGNIFICATION', key='-100X-', default=magnification=='100x')],
+        [sg.Button('Submit'), sg.Button('Cancel')]
+    ]
+    
+    window = sg.Window('Microscope Magnification Selector', layout)
+    
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            window.close()
+            sys.exit()
+        elif event == 'Submit':
+            if values['-10X-']:
+                MO = '10x'
+            elif values['-20X-']:
+                MO = '20x'
+            elif values['-40X-']:
+                MO = '40x'
+            else:
+                MO = '100x'
+            settings['-MAGNIFICATION-'] = MO
+            break   
+    window.close()
+    
+    return MO
         
         
 def setSavingParameters():
@@ -204,53 +201,50 @@ def setSavingParameters():
         name of the subfolder where the data are going to be saved (facultative).
 
     '''
-    try:
-        # Set up the user settings object
-        settings = sg.UserSettings()
+    # Set up the user settings object
+    settings = sg.UserSettings()
+    
+    # Define default values for the inputs
+    default_userID = settings.get('userID', 'lace3018')
+    default_saveFolder = settings.get('saveFolder', 'RatNeurons')
+    default_saveSubFolder = settings.get('saveSubFolder', '')
+    
+    # Define the layout of the window
+    layout = [
+        [sg.Text('Identification', size =(30, 1)), sg.InputText(default_text=default_userID, key='userID')],
+        [sg.Text('Save folder', size =(30, 1)), sg.InputText(default_text=default_saveFolder, key='saveFolder')],
+        [sg.Text('Save subfolder (facult.)', size =(30, 1)), sg.InputText(default_text=default_saveSubFolder, key='saveSubFolder')],
+        [sg.Submit(), sg.Cancel()]]
+    
+    # Create the window
+    window = sg.Window('Saving parameters', layout)
+    
+    # Loop until the user closes or submits the window
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            # If the user cancels, return the default values
+            userID = default_userID
+            saveFolder = default_saveFolder
+            saveSubFolder = default_saveSubFolder
+            window.close()
+            sys.exit()
+        elif event == 'Submit':
+            # If the user submits, update the user settings with the new values
+            settings['userID'] = values['userID']
+            settings['saveFolder'] = values['saveFolder']
+            settings['saveSubFolder'] = values['saveSubFolder']
+            # Return the new values
+            userID = values['userID']
+            saveFolder = values['saveFolder']
+            saveSubFolder = values['saveSubFolder']
+            break
         
-        # Define default values for the inputs
-        default_userID = settings.get('userID', 'lace3018')
-        default_saveFolder = settings.get('saveFolder', 'RatNeurons')
-        default_saveSubFolder = settings.get('saveSubFolder', '')
-        
-        # Define the layout of the window
-        layout = [
-            [sg.Text('Identification', size =(30, 1)), sg.InputText(default_text=default_userID, key='userID')],
-            [sg.Text('Save folder', size =(30, 1)), sg.InputText(default_text=default_saveFolder, key='saveFolder')],
-            [sg.Text('Save subfolder (facult.)', size =(30, 1)), sg.InputText(default_text=default_saveSubFolder, key='saveSubFolder')],
-            [sg.Submit(), sg.Cancel()]]
-        
-        # Create the window
-        window = sg.Window('Saving parameters', layout)
-        
-        # Loop until the user closes or submits the window
-        while True:
-            event, values = window.read()
-            if event in (None, 'Cancel'):
-                # If the user cancels, return the default values
-                userID = default_userID
-                saveFolder = default_saveFolder
-                saveSubFolder = default_saveSubFolder
-                window.close()
-                sys.exit()
-            elif event == 'Submit':
-                # If the user submits, update the user settings with the new values
-                settings['userID'] = values['userID']
-                settings['saveFolder'] = values['saveFolder']
-                settings['saveSubFolder'] = values['saveSubFolder']
-                # Return the new values
-                userID = values['userID']
-                saveFolder = values['saveFolder']
-                saveSubFolder = values['saveSubFolder']
-                break
-            
-        # Close the window
-        window.close()
-        
-        return userID, saveFolder, saveSubFolder
-    except Exception as e:
-        print(f"An error occurred while selecting the saving parameters: {str(e)}")
-        sys.exit()
+    # Close the window
+    window.close()
+    
+    return userID, saveFolder, saveSubFolder
+    
 
 def setVideoParameters():
     '''
@@ -264,51 +258,48 @@ def setVideoParameters():
         Number of minutes after which acquisition is terminated. [min]
 
     '''
-    try:
-        # Set up the user settings object
-        settings = sg.UserSettings()
+    # Set up the user settings object
+    settings = sg.UserSettings()
+    
+    # Define default values for the inputs
+    default_frameRate = settings.get('frameRate', '1')
+    default_maxTime = settings.get('maxTime', '180')
+    
+    layout = [
+        [sg.Text('Video frame rate [im/min] (integers only)',size=(30,1)),sg.InputText(default_text=default_frameRate, key = 'frameRate')],
+        [sg.Text('Stop acquisition after [min] (integers only)',size=(30,1)),sg.InputText(default_text=default_maxTime, key = 'maxTime')],
+        [sg.Submit(), sg.Cancel()]
+    ]
+    
+    # Create the window
+    window = sg.Window('Video parameters', layout)
+      
+    # Loop until the user closes or submits the window
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            # If the user cancels, return the default values
+            frameRate = default_frameRate
+            maxTime = default_maxTime
+            window.close()
+            sys.exit()
+        elif event == 'Submit':
+            # If the user submits, update the user settings with the new values
+            settings['frameRate'] = values['frameRate']
+            settings['maxTime'] = values['maxTime']
+            # Return the new values
+            frameRate = values['frameRate']
+            maxTime = values['maxTime']
+            break
         
-        # Define default values for the inputs
-        default_frameRate = settings.get('frameRate', '1')
-        default_maxTime = settings.get('maxTime', '180')
-        
-        layout = [
-            [sg.Text('Video frame rate [im/min] (integers only)',size=(30,1)),sg.InputText(default_text=default_frameRate, key = 'frameRate')],
-            [sg.Text('Stop acquisition after [min] (integers only)',size=(30,1)),sg.InputText(default_text=default_maxTime, key = 'maxTime')],
-            [sg.Submit(), sg.Cancel()]
-        ]
-        
-        # Create the window
-        window = sg.Window('Video parameters', layout)
-          
-        # Loop until the user closes or submits the window
-        while True:
-            event, values = window.read()
-            if event in (None, 'Cancel'):
-                # If the user cancels, return the default values
-                frameRate = default_frameRate
-                maxTime = default_maxTime
-                window.close()
-                sys.exit()
-            elif event == 'Submit':
-                # If the user submits, update the user settings with the new values
-                settings['frameRate'] = values['frameRate']
-                settings['maxTime'] = values['maxTime']
-                # Return the new values
-                frameRate = values['frameRate']
-                maxTime = values['maxTime']
-                break
-            
-        # Close the window
-        window.close()
-        
-        frameRate = int(frameRate)/60   # TODO : changer la variable pour que ce soit un vrai framerate ou changer le nom en conséquence
-        maxTime = (int(maxTime))*60
-        
-        return frameRate,maxTime
-    except Exception as e:
-        print(f"An error occurred while setting the video parameters: {str(e)}")
-        sys.exit()
+    # Close the window
+    window.close()
+    
+    frameRate = int(frameRate)/60   # TODO : changer la variable pour que ce soit un vrai framerate ou changer le nom en conséquence
+    maxTime = (int(maxTime))*60
+    
+    return frameRate,maxTime
+
 
 def setWavelengthArray(MonoOrPoly):
     '''
@@ -327,113 +318,110 @@ def setWavelengthArray(MonoOrPoly):
         wavelength array.
 
     '''
-    try:
-        if MonoOrPoly=='P':
-            
-            # Set up the user settings object
-            settings = sg.UserSettings()
-            
-            # Define default values for the inputs
-            default_n = settings.get('num_values', '36')
-            default_min_wl = settings.get('min_value', '500')
-            default_max_wl = settings.get('max_value', '850')
-            
-            layout = [
-            [sg.Text('Number of wavelengths: '), sg.Input(key='num_values',default_text=default_n)],
-            [sg.Text('Minimum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=default_min_wl, key='min_value')],
-            [sg.Text('Maximum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=850, key='max_value')],
-            [sg.Text('Add a wavelength to the array? [nm]',size=(30,1)),sg.InputText(default_text='No',key='added_wl')],
-            [sg.Submit(), sg.Cancel()]
-            ]
-            
-            # Create the window
-            window = sg.Window('Wavelengths selection -- Polychromatic acquisition', layout)
-              
-            # Loop until the user closes or submits the window
-            while True:
-                event, values = window.read()
-                if event in (None, 'Cancel'):
-                    # If the user cancels, return the default values
-                    num_values = default_n
-                    min_value = default_min_wl
-                    max_value = default_max_wl
-                    window.close()
-                    sys.exit()
-                elif event == 'Submit':
-                    # If the user submits, update the user settings with the new values
-                    settings['num_values'] = values['num_values']
-                    settings['min_value'] = values['min_value']
-                    settings['max_value'] = values['max_value']
-                    # Return the new values
-                    num_values = int(values['num_values'])
-                    min_value = int(values['min_value']*1000)
-                    max_value = int(values['max_value']*1000)
-                    # Generate the array
-                    if num_values == 1:
-                        wls_array = [min_value]
-                    else:
-                        step = (max_value - min_value) / (num_values - 1)
-                        wls_array = [round(min_value + step * i) for i in range(num_values)]
-                    break
-            
-            window.close()
-            
-            if values['added_wl']!='No':
-                wl2add = int(float(values['added_wl'])*1000)
-                ii = np.searchsorted(wls_array,wl2add)
-                wls_array = np.insert(wls_array,ii,wl2add)
-            
-            wls_array = np.asarray(wls_array).astype('float')
-            print(wls_array)
-            return wls_array
+    if MonoOrPoly=='P':
         
-        else:
-            # Set up the user settings object
-            settings = sg.UserSettings()
-            
-            # Define default values for the inputs
-            default_n = settings.get('num_values', '36')
-            default_wl = settings.get('wavelength', '666')
-            
-            layout = [
-                [sg.Text('Select the wavelength (nm):')],
-                [sg.Slider(range=(500, 850), default_value=default_wl, orientation='h', size=(20,15), key='wavelength')],
-                [sg.Text('Enter the number of repetitions:')],
-                [sg.Input(default_text=default_n, key='num_values')],
-                [sg.Button('Submit'), sg.Button('Cancel')]
-            ]
-            
-            window = sg.Window('Wavelength Selector', layout)
-            
-            # Loop until the user closes or submits the window
-            while True:
-                event, values = window.read()
-                if event in (None, 'Cancel'):
-                    # If the user cancels, return the default values
-                    num_values = default_n
-                    wavelength = default_wl
-                    window.close()
-                    sys.exit()
-                elif event == 'Submit':
-                    # If the user submits, update the user settings with the new values
-                    settings['num_values'] = values['num_values']
-                    settings['wavelength'] = values['wavelength']
-                    # Return the new values
-                    num_values = int(values['num_values'])
-                    wavelength = int(values['wavelength']*1000)
-                    # Generate the array
-                    wls_array = [wavelength] * num_values
-                    break
-            
-            window.close()
-            
-            wls_array = np.asarray(wls_array).astype('float')
-            return wls_array
-    except Exception as e:
-        print(f"An error occurred while setting the wavelength array: {str(e)}")
-        sys.exit()
+        # Set up the user settings object
+        settings = sg.UserSettings()
+        
+        # Define default values for the inputs
+        default_n = settings.get('num_values', '36')
+        default_min_wl = settings.get('min_value', '500')
+        default_max_wl = settings.get('max_value', '850')
+        
+        layout = [
+        [sg.Text('Number of wavelengths: '), sg.Input(key='num_values',default_text=default_n)],
+        [sg.Text('Minimum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=default_min_wl, key='min_value')],
+        [sg.Text('Maximum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=850, key='max_value')],
+        [sg.Text('Add a wavelength to the array? [nm]',size=(30,1)),sg.InputText(default_text='No',key='added_wl')],
+        [sg.Submit(), sg.Cancel()]
+        ]
+        
+        # Create the window
+        window = sg.Window('Wavelengths selection -- Polychromatic acquisition', layout)
+          
+        # Loop until the user closes or submits the window
+        while True:
+            event, values = window.read()
+            if event in (None, 'Cancel'):
+                # If the user cancels, return the default values
+                num_values = default_n
+                min_value = default_min_wl
+                max_value = default_max_wl
+                window.close()
+                sys.exit()
+            elif event == 'Submit':
+                # If the user submits, update the user settings with the new values
+                settings['num_values'] = values['num_values']
+                settings['min_value'] = values['min_value']
+                settings['max_value'] = values['max_value']
+                # Return the new values
+                num_values = int(values['num_values'])
+                min_value = int(values['min_value']*1000)
+                max_value = int(values['max_value']*1000)
+                # Generate the array
+                if num_values == 1:
+                    wls_array = [min_value]
+                else:
+                    step = (max_value - min_value) / (num_values - 1)
+                    wls_array = [round(min_value + step * i) for i in range(num_values)]
+                break
+        
+        window.close()
+        
+        if values['added_wl']!='No':
+            wl2add = int(float(values['added_wl'])*1000)
+            ii = np.searchsorted(wls_array,wl2add)
+            wls_array = np.insert(wls_array,ii,wl2add)
+        
+        wls_array = np.asarray(wls_array).astype('float')
+        print(wls_array)
+        return wls_array
+    
+    else:
+        # Set up the user settings object
+        settings = sg.UserSettings()
+        
+        # Define default values for the inputs
+        default_n = settings.get('num_values', '36')
+        default_wl = settings.get('wavelength', '666')
+        
+        layout = [
+            [sg.Text('Select the wavelength (nm):')],
+            [sg.Slider(range=(500, 850), default_value=default_wl, orientation='h', size=(20,15), key='wavelength')],
+            [sg.Text('Enter the number of repetitions:')],
+            [sg.Input(default_text=default_n, key='num_values')],
+            [sg.Button('Submit'), sg.Button('Cancel')]
+        ]
+        
+        window = sg.Window('Wavelength Selector', layout)
+        
+        # Loop until the user closes or submits the window
+        while True:
+            event, values = window.read()
+            if event in (None, 'Cancel'):
+                # If the user cancels, return the default values
+                num_values = default_n
+                wavelength = default_wl
+                window.close()
+                sys.exit()
+            elif event == 'Submit':
+                # If the user submits, update the user settings with the new values
+                settings['num_values'] = values['num_values']
+                settings['wavelength'] = values['wavelength']
+                # Return the new values
+                num_values = int(values['num_values'])
+                wavelength = int(values['wavelength']*1000)
+                # Generate the array
+                wls_array = [wavelength] * num_values
+                break
+        
+        window.close()
+        
+        wls_array = np.asarray(wls_array).astype('float')
+        return wls_array
 
-def setOPLarray(wls, path_log):
+
+def setOPLarray(wls):
     '''
     Sets the optical path length (OPL) array by asking the user to select a txt 
     file containing the optimal OPL values for the present acquisition.
@@ -449,57 +437,53 @@ def setOPLarray(wls, path_log):
         array of OPLs.
 
     '''
-    try:
-        # Create a settings object
-        settings = sg.UserSettings()
-        
-        # Define default values for the inputs
-        default_oplPath = settings.get('oplPath', 'S:/DHM 1087/lace3018/PDHM_automated_acquisition/tables/Archive/OPL_table_vide_20X.txt')
-        
-        layout = [
-            [sg.Text('Select recent OPL table',size=(30,1))],
-            [sg.InputText(default_text=default_oplPath,key='oplPath'),sg.FileBrowse()],
-            [sg.Submit(), sg.Cancel()]]
-        
-        window = sg.Window('Select OPL Table', layout)
-        
-        # Loop until the user closes or submits the window
-        while True:
-            event, values = window.read()
-            if event in (None, 'Cancel'):
-                # If the user cancels, return the default values
-                oplPath = default_oplPath
-                window.close()
-                sys.exit()
-            elif event == 'Submit':
-                # If the user submits, update the user settings with the new values
-                settings['oplPath'] = values['oplPath']
-                # Return the new values
-                oplPath = values['oplPath']
-                break
-        
-        window.close()
-        
-        # Interpolation
-        OPL_from_table = np.loadtxt(oplPath,skiprows=1).T
-        interpolation_function = interp1d(OPL_from_table[0],OPL_from_table[1],kind='linear',bounds_error=False,fill_value=-10.)
-        
-        # Arrays to display the interpolation function on the graph
-        wls_for_display = np.linspace(OPL_from_table[0][0],OPL_from_table[0][-1],1000)
-        OPL_for_display = interpolation_function(wls_for_display)
-        
-        # Generating the OPL array
-        OPL_array = np.array(interpolation_function(wls/1000))
-        
-        # Plot the OPL array and interpolation function
-        dp.plotTable(wls_for_display,OPL_for_display*0.0507+25946,wls/1000,OPL_array*0.0507+25946,'OPL [$\mu$m]', path_log, 'oplTablePlot') # TODO : add if statement for the conversion into micrometers so that its valid for all the magnifications
-        return OPL_array
-    except Exception as e:
-        print(f"An error occurred while setting the OPL array: {str(e)}")
-        sys.exit()
-        
+    # Create a settings object
+    settings = sg.UserSettings()
+    
+    # Define default values for the inputs
+    default_oplPath = settings.get('oplPath', 'S:/DHM 1087/lace3018/PDHM_automated_acquisition/tables/Archive/OPL_table_vide_20X.txt')
+    
+    layout = [
+        [sg.Text('Select recent OPL table',size=(30,1))],
+        [sg.InputText(default_text=default_oplPath,key='oplPath'),sg.FileBrowse()],
+        [sg.Submit(), sg.Cancel()]]
+    
+    window = sg.Window('Select OPL Table', layout)
+    
+    # Loop until the user closes or submits the window
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            # If the user cancels, return the default values
+            oplPath = default_oplPath
+            window.close()
+            sys.exit()
+        elif event == 'Submit':
+            # If the user submits, update the user settings with the new values
+            settings['oplPath'] = values['oplPath']
+            # Return the new values
+            oplPath = values['oplPath']
+            break
+    
+    window.close()
+    
+    # Interpolation
+    OPL_from_table = np.loadtxt(oplPath,skiprows=1).T
+    interpolation_function = interp1d(OPL_from_table[0],OPL_from_table[1],kind='linear',bounds_error=False,fill_value=-10.)
+    
+    # Arrays to display the interpolation function on the graph
+    wls_for_display = np.linspace(OPL_from_table[0][0],OPL_from_table[0][-1],1000)
+    OPL_for_display = interpolation_function(wls_for_display)
+    
+    # Generating the OPL array
+    OPL_array = np.array(interpolation_function(wls/1000))
+    
+    # Plot the OPL array and interpolation function
+    # dp.plotTable(wls_for_display,OPL_for_display*0.0507+25946,wls/1000,OPL_array*0.0507+25946,'OPL [$\mu$m]', path_log, 'oplTablePlot') # TODO : add if statement for the conversion into micrometers so that its valid for all the magnifications
+    return OPL_array
+   
 
-def setShutterArray(wls, path_log):
+def setShutterArray(wls):
     '''
     Sets the shutter speed array by asking the user to select a txt 
     file containing the optimal shutter speed values for the present acquisition.
@@ -515,54 +499,51 @@ def setShutterArray(wls, path_log):
         array of shutter speeds.
 
     '''
-    try:
-        # Create a settings object
-        settings = sg.UserSettings()
-        
-        # Define default values for the inputs
-        default_shutterPath = settings.get('shutterPath', 'S:/DHM 1087/lace3018/PDHM_automated_acquisition/tables/Archive/shutter_table_vide_20X.txt')
-        
-        layout = [
-            [sg.Text('Select recent shutter speed table',size=(30,1))],
-            [sg.InputText(default_text=default_shutterPath,key='shutterPath'),sg.FileBrowse()],
-            [sg.Submit(), sg.Cancel()]]
-        
-        window = sg.Window('Select shutter speed table', layout)
-        
-        # Loop until the user closes or submits the window
-        while True:
-            event, values = window.read()
-            if event in (None, 'Cancel'):
-                # If the user cancels, return the default values
-                shutterPath = default_shutterPath
-                window.close()
-                sys.exit()
-            elif event == 'Submit':
-                # If the user submits, update the user settings with the new values
-                settings['shutterPath'] = values['shutterPath']
-                # Return the new values
-                shutterPath = values['shutterPath']
-                break
-        
-        window.close()
-        
-        # Interpolation
-        shutter_from_table = np.loadtxt(shutterPath,skiprows=1).T
-        interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[1]*0.7,kind='linear',bounds_error=False,fill_value=-10.) #TODO: ne pas hardcoder le 95% du shutter
-        
-        # Arrays to display the interpolation function on the graph
-        wls_for_display = np.linspace(shutter_from_table[0][0],shutter_from_table[0][-1],1000)
-        shutter_for_display = interpolation_function(wls_for_display)
-        
-        # Generating the shutter array
-        shutter_array = np.array(interpolation_function(wls/1000))
-        
-        # Plot the shutter array and interpolation function
-        dp.plotTable(wls_for_display,shutter_for_display,wls/1000,shutter_array,'Shutter speed [us]', path_log, 'shutterTablePlot')
-        return shutter_array
-    except Exception as e:
-        print(f"An error occurred while setting the shutter array: {str(e)}")
-        sys.exit()
+    # Create a settings object
+    settings = sg.UserSettings()
+    
+    # Define default values for the inputs
+    default_shutterPath = settings.get('shutterPath', 'S:/DHM 1087/lace3018/PDHM_automated_acquisition/tables/Archive/shutter_table_vide_20X.txt')
+    
+    layout = [
+        [sg.Text('Select recent shutter speed table',size=(30,1))],
+        [sg.InputText(default_text=default_shutterPath,key='shutterPath'),sg.FileBrowse()],
+        [sg.Submit(), sg.Cancel()]]
+    
+    window = sg.Window('Select shutter speed table', layout)
+    
+    # Loop until the user closes or submits the window
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            # If the user cancels, return the default values
+            shutterPath = default_shutterPath
+            window.close()
+            sys.exit()
+        elif event == 'Submit':
+            # If the user submits, update the user settings with the new values
+            settings['shutterPath'] = values['shutterPath']
+            # Return the new values
+            shutterPath = values['shutterPath']
+            break
+    
+    window.close()
+    
+    # Interpolation
+    shutter_from_table = np.loadtxt(shutterPath,skiprows=1).T
+    interpolation_function = interp1d(shutter_from_table[0],shutter_from_table[1]*0.7,kind='linear',bounds_error=False,fill_value=-10.) #TODO: ne pas hardcoder le 95% du shutter
+    
+    # Arrays to display the interpolation function on the graph
+    wls_for_display = np.linspace(shutter_from_table[0][0],shutter_from_table[0][-1],1000)
+    shutter_for_display = interpolation_function(wls_for_display)
+    
+    # Generating the shutter array
+    shutter_array = np.array(interpolation_function(wls/1000))
+    
+    # Plot the shutter array and interpolation function
+    # dp.plotTable(wls_for_display,shutter_for_display,wls/1000,shutter_array,'Shutter speed [us]', path_log, 'shutterTablePlot')
+    return shutter_array
+
 
 def setObject():
     '''
@@ -574,49 +555,65 @@ def setObject():
         Used to automatically name the OPL and shutter tables when generated.
 
     '''
-    try:
-        selection = ('cell_chamber','chamlide_cell_chamber','phase_target','reference')
-        settings = sg.UserSettings()
-        selected_option = settings.get('selected_option', selection[0])
-        layout = [
-            [sg.Listbox(['Cell culture chamber','Chamlide','Phase target','Air (for reference holograms)'], size=(60,4), enable_events=False, key='fac',default_values=[selected_option])],
-            [sg.Submit(), sg.Cancel()]]
-            
-        # Create the prompt window
-        window = sg.Window('Object', layout)
+    selection = ('cell_chamber','chamlide_cell_chamber','phase_target','reference')
+    settings = sg.UserSettings()
+    selected_option = settings.get('selected_option', selection[0])
+    layout = [
+        [sg.Listbox(['Cell culture chamber','Chamlide','Phase target','Air (for reference holograms)'], size=(60,4), enable_events=False, key='fac',default_values=[selected_option])],
+        [sg.Submit(), sg.Cancel()]]
         
-        while True:
-            event, values = window.read()
-            if event == 'Submit':
-                # Save the values to the UserSettings object
-                settings.set('selected_option', values['fac'][0])
-                break
-            if event == 'Cancel':
-                window.close()
-                sys.exit()
+    # Create the prompt window
+    window = sg.Window('Object', layout)
+    
+    while True:
+        event, values = window.read()
+        if event == 'Submit':
+            # Save the values to the UserSettings object
+            settings.set('selected_option', values['fac'][0])
+            break
+        if event == 'Cancel':
+            window.close()
+            sys.exit()
+    
+    # Close the window
+    window.close()
+    
+    strx=""
+    for val in values['fac']:
+        strx=strx+ " "+ val+","
+        if val=='Cell culture chamber':
+            sample = 'cell_chamber'
+        if val=='Chamlide':
+            sample= 'chamlide_cell_chamber'
+        if val=='Phase target':
+            sample= 'phase_target'
+        if val=='Air (for reference holograms)':
+            sample='reference'
         
-        # Close the window
-        window.close()
-        
-        strx=""
-        for val in values['fac']:
-            strx=strx+ " "+ val+","
-            if val=='Cell culture chamber':
-                sample = 'cell_chamber'
-            if val=='Chamlide':
-                sample= 'chamlide_cell_chamber'
-            if val=='Phase target':
-                sample= 'phase_target'
-            if val=='Air (for reference holograms)':
-                sample='reference'
-            
-        return sample
-    except Exception as e:
-        print(f"An error occurred while selecting the object: {str(e)}")
-        sys.exit() 
+    return sample
    
+
+def setupPath(folder1,folder2,folder3,folder4,folder5,folder6):
+    '''
+    Sets up the folder structure for saving data and returns path to saving 
+    location and log saving location
+    '''
+    path = Path(r'\\172.16.1.103\data\DHM 1087\%s\%s\%s\%s\%s\%s'%(folder1,folder2,folder3,folder4,folder5,folder6))
+    pathlog=Path(r'\\172.16.1.103\data\DHM 1087\%s\%s\%s\%s\%s\%s\Log'%(folder1,folder2,folder3,folder4,folder5,folder6))
+    isExist=os.path.exists(pathlog)
+    if not isExist:
+        os.makedirs(pathlog)
+    
+    return path,pathlog
+
+  
 def setMotorSweepParameters():
-    try:
+    try:        
+        MO = setMicroscopeObjective()
+        wavelengths = setWavelengthArray('P')
+        OPL_array = setOPLarray(wavelengths)
+        shutter_array = setShutterArray(wavelengths)
+        
         # Create a settings object
         settings = sg.UserSettings()
         
@@ -654,17 +651,6 @@ def setMotorSweepParameters():
         
         window.close()
         
-        # Generate path
-        date=datetime.today().strftime('%Y%m%d')
-        pathlog='tables\\'+date+'\Log'
-        isExist=os.path.exists(pathlog)
-        if not isExist:
-            os.makedirs(pathlog)
-            
-        MO = setMicroscopeObjective()
-        wavelengths = setWavelengthArray('P')
-        OPL_array = setOPLarray(wavelengths,pathlog)
-        shutter_array = setShutterArray(wavelengths,pathlog)
 
         return MO,wavelengths,OPL_array,shutter_array,float(interval),float(step)
     
@@ -673,18 +659,148 @@ def setMotorSweepParameters():
         sys.exit()
 
 
+def askForConfirmation(latest_plot_path):
+    layout = [[sg.Text("Was the peak found?")],
+              [sg.Image(filename=latest_plot_path)],
+              [sg.Button("Yes"), sg.Button("No")]]
+
+    window = sg.Window("Peak Confirmation", layout)
+
+    while True:
+        event, values = window.read()
+        if event == sg.WINDOW_CLOSED:
+            break
+        if event == 'Yes':
+            window.close()
+            os.remove(latest_plot_path)  # Delete the temporary file after using it
+            return 'Yes'
+        elif event == 'No':
+            window.close()
+            os.remove(latest_plot_path)  # Delete the temporary file after using it
+            return 'No'
+
+
+def askForFinerSweep():
+    layout = [[sg.Text('Do you want to perform a finer sweep?')],
+              [sg.Button('Yes'), sg.Button('No')]]
+    window = sg.Window('Finer Sweep Confirmation', layout)
+
+    while True:  # Event Loop
+        event, values = window.read()
+        if event in ('Yes', 'No'):
+            break
+        elif event == sg.WINDOW_CLOSED:
+            break
+
+    window.close()
+    return event
+
+
+def askForNewSweepParameters():
+    """
+    Prompt the user to enter new sweep parameters.
+    """
+
+    layout = [
+        [sg.Text('The optimal OPL was not found. Please enter larger interval.')],
+        [sg.Text('Enter the coarse motor step (in µm):')],
+        [sg.InputText(default_text='15', key='step')],
+        [sg.Text('Enter the coarse motor interval (in µm):')],
+        [sg.InputText(default_text='700', key='interval')],
+        [sg.Button('Submit'), sg.Button('Cancel')]
+    ]
+
+    window = sg.Window('New Sweep Parameters', layout)
+
+    # Loop until the user closes or submits the window
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            # If the user cancels, use default parameters
+            step = 100
+            interval = 2000
+            break
+        elif event == 'Submit':
+            # If the user submits, return the values
+            step = values['step']
+            interval = values['interval']
+            break
+
+    window.close()
+    return float(interval), float(step)
+
+
+def askForFinerSweepParameters():
+    """
+    Prompt the user to enter finer sweep parameters.
+    """
+
+    layout = [
+        [sg.Text('Please enter reduced range with smaller step.')],
+        [sg.Text('Enter the finer motor step (in µm):')],
+        [sg.InputText(default_text='15', key='step')],
+        [sg.Text('Enter the reduced motor interval (in µm):')],
+        [sg.InputText(default_text='700', key='interval')],
+        [sg.Button('Submit'), sg.Button('Cancel')]
+    ]
+
+    window = sg.Window('New Sweep Parameters', layout)
+
+    # Loop until the user closes or submits the window
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            # If the user cancels, use default parameters
+            step = 5
+            interval = 100
+            break
+        elif event == 'Submit':
+            # If the user submits, return the values
+            step = values['step']
+            interval = values['interval']
+            break
+
+    window.close()
+    return float(interval), float(step)
+
+def askForFinerSweepParametersLoop():
+    """
+    Prompt the user to enter finer sweep parameters.
+    """
+
+    layout = [
+        [sg.Text('Please enter desired range and step for the wavelength loop.')],
+        [sg.Text('Enter the finer motor step (in µm):')],
+        [sg.InputText(default_text='5', key='step')],
+        [sg.Text('Enter the reduced motor interval (in µm):')],
+        [sg.InputText(default_text='50', key='interval')],
+        [sg.Button('Submit'), sg.Button('Cancel')]
+    ]
+
+    window = sg.Window('New Sweep Parameters', layout)
+
+    # Loop until the user closes or submits the window
+    while True:
+        event, values = window.read()
+        if event in (None, 'Cancel'):
+            # If the user cancels, use default parameters
+            step = 5
+            interval = 50
+            break
+        elif event == 'Submit':
+            # If the user submits, return the values
+            step = values['step']
+            interval = values['interval']
+            break
+
+    window.close()
+    return float(interval), float(step)
+
 def setShutterSweepParameters():
-    try:
-       # Generate path
-        date=datetime.today().strftime('%Y%m%d')
-        pathlog='tables\\'+date+'\Log'
-        isExist=os.path.exists(pathlog)
-        if not isExist:
-            os.makedirs(pathlog)
-            
+    try:            
         MO = setMicroscopeObjective()
         wavelengths = setWavelengthArray('P')
-        OPL_array = setOPLarray(wavelengths,pathlog)
+        OPL_array = setOPLarray(wavelengths)
 
         return MO,wavelengths,OPL_array
     
@@ -692,20 +808,66 @@ def setShutterSweepParameters():
         print(f"An error occurred while setting the motor sweep parameters: {str(e)}")
         sys.exit()
 
-def setupPath(folder1,folder2,folder3,folder4,folder5,folder6):
-    '''
-    Sets up the folder structure for saving data and returns path to saving 
-    location and log saving location
-    '''
-    try:
-        path = Path(r'\\172.16.1.103\data\DHM 1087\%s\%s\%s\%s\%s\%s'%(folder1,folder2,folder3,folder4,folder5,folder6))
-        pathlog=Path(r'\\172.16.1.103\data\DHM 1087\%s\%s\%s\%s\%s\%s\Log'%(folder1,folder2,folder3,folder4,folder5,folder6))
-        isExist=os.path.exists(pathlog)
-        if not isExist:
-            os.makedirs(pathlog)
-        
-        return path,pathlog
 
-    except Exception as e:
-        print(f"An error occurred while setting up the path: {str(e)}")
-        sys.exit()
+def select_OPL_or_shutter():
+    # Layout definition
+    layout = [
+        [sg.Text("Which table to you want to produce?")],
+        [sg.Button("OPL"), sg.Button("shutter")]
+    ]
+
+    # Create the window
+    window = sg.Window("Choose Option", layout)
+
+    # Event loop to process events and get the values of the inputs
+    while True:
+        event, values = window.read()
+        if event in ("OPL", "shutter"):
+            window.close()
+            return event
+        if event == sg.WINDOW_CLOSED:
+            window.close()
+            return None
+
+
+def select_rough_or_not():
+    # Layout definition
+    layout = [
+        [sg.Text("Do you want a rough table or do you already have a table for initial guess?")],
+        [sg.Button("Rough Table"), sg.Button("Have Initial Guess Table")]
+    ]
+
+    # Create the window
+    window = sg.Window("Choose Table Type", layout)
+
+    # Event loop to process events and get the values of the inputs
+    while True:
+        event, values = window.read()
+        window.close()
+        if event == "Rough Table":
+            return True
+        elif event == "Have Initial Guess Table" or event == sg.WINDOW_CLOSED:
+            return False
+        
+
+def show_wavelengths_for_verification(wls):
+    # Create GUI layout
+    rows = [[sg.Text(f"Wavelength: {wl}"), sg.Checkbox('Not satisfying', key=str(wl))] for wl in wls]
+    rows.append([sg.Button('Submit'), sg.Button('Cancel')])
+    
+    window = sg.Window('Verify Wavelengths', rows)
+    
+    unsatisfactory_wls = []
+    
+    while True:
+        event, values = window.read()
+        if event == sg.WIN_CLOSED or event == 'Cancel':
+            break
+        if event == 'Submit':
+            for wl_str, checkbox_value in values.items():
+                if checkbox_value:
+                    unsatisfactory_wls.append(float(wl_str))  # Convert back to float
+            break
+
+    window.close()
+    return unsatisfactory_wls
