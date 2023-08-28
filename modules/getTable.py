@@ -204,8 +204,6 @@ def getOPLTable():
     unsatisfactory_wavelengths = Inputs.show_wavelengths_for_verification(wls)
     print(unsatisfactory_wavelengths)
     
-    for wl
-    
     # Save OPL table  
     optimal_OPL_list = np.asarray(optimal_OPL_list)
     filename = f"table_{int(len(wls))}points.txt"
