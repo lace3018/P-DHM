@@ -13,77 +13,9 @@ from scipy.interpolate import interp1d
 from . import displayPlots as dp
 import os
 import sys
+import math
 
 sg.theme('DefaultNoMoreNagging')
-
-# def getUpdateShutterChoice():
-#     '''
-#     This function creates a GUI window to ask the user whether they want to update the shutter table. The function returns a boolean value indicating the user's choice. 
-
-#     Returns
-#     -------
-#     update_shutter : BOOL
-#     '''
-#     try:
-#         update_opl = False
-#         layout = [[sg.Text('Do you need to update the shutter table?')],
-#                   [sg.Button('Yes'), sg.Button('No')]]
-    
-#         window = sg.Window('Update shutter table', layout)
-    
-#         while True:
-#             event, values = window.read()
-#             if event == sg.WINDOW_CLOSED:
-#                 update_shutter = False  # default value if window is closed
-#                 window.close()
-#                 sys.exit()
-#             elif event == 'Yes':
-#                 update_shutter = True
-#                 break
-#             elif event == 'No':
-#                 update_shutter = False
-#                 break
-    
-#         window.close()
-    
-#         return update_shutter
-#     except Exception as e:
-#         print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
-
-
-# def getUpdateOPLChoice():
-#     '''
-#     This function creates a GUI window to ask the user whether they want to update the OPL table. The function returns a boolean value indicating the user's choice. 
-
-#     Returns
-#     -------
-#     update_opl : BOOL
-#     '''
-#     try:
-#         update_opl = False
-#         layout = [[sg.Text('Do you need to update the OPL table?')],
-#                   [sg.Button('Yes'), sg.Button('No')]]
-    
-#         window = sg.Window('Update OPL table', layout)
-    
-#         while True:
-#             event, values = window.read()
-#             if event == sg.WINDOW_CLOSED:
-#                 update_opl = False  # default value if window is closed
-#                 window.close()
-#                 sys.exit()
-#             elif event == 'Yes':
-#                 update_opl = True
-#                 break
-#             elif event == 'No':
-#                 update_opl = False
-#                 break
-    
-#         window.close()
-    
-#         return update_opl
-#     except Exception as e:
-#         print(f"An error occurred while selecting wheter or not to update the OPL table: {str(e)}")
 
 
 def setupExperiment(host):
@@ -115,7 +47,9 @@ def setupExperiment(host):
         event, values = window.read()
         if event in (None, 'Cancel'):
             window.close()
-            return None, None, None, None
+            host.Logout()
+            print('Logged out from Koala')
+            sys.exit()
         if values[0]==True:
             MonoOrPoly='P'
         else:
@@ -123,24 +57,30 @@ def setupExperiment(host):
         window.close()
         
         # Set up all experiment parameters
-        MO = setMicroscopeObjective()  
-        userID,saveFolder,saveSubFolder = setSavingParameters()                   
-        wavelengths = setWavelengthArray(MonoOrPoly)       
+        MO = setMicroscopeObjective(host)  
+        userID,saveFolder,saveSubFolder = setSavingParameters(host)                   
+        wavelengths = setWavelengthArray(MonoOrPoly, host)       
         path,pathlog = setupPath(userID,'RawData',datetime.today().strftime('%Y%m%d'),MO,saveFolder,saveSubFolder)
-        OPL_array = setOPLarray(wavelengths)
-        shutter_array = setShutterArray(wavelengths)
+        OPL_array, oplPath = setOPLarray(wavelengths,host)
+        shutter_array, shutterPath = setShutterArray(wavelengths, host)
+        
+        # Load configuration in Koala
+        configID = {'10x': 132,'20x': 133,'40x': 134,'100x': 135} # Create a dictionary to map MOs to IDs
+        host.OpenConfig(configID[MO])
+        print('MO config set in Koala')
         
         np.savetxt(str(pathlog)+'\wavelengths.txt',wavelengths)
         
-        return path,wavelengths,OPL_array,shutter_array
+        return path,wavelengths,OPL_array,shutter_array,oplPath,shutterPath
     
     except Exception as e:
         print(f"An error occurred while setting up the experiment: {str(e)}")
         host.Logout()
+        print('Logged out from Koala')
         sys.exit()
 
 
-def setMicroscopeObjective():
+def setMicroscopeObjective(host):
     '''
     Displays a GUI window to allow the user to select a microscope magnification, saves the chosen
     magnification in the user settings, and returns the chosen magnification string.
@@ -169,6 +109,8 @@ def setMicroscopeObjective():
         event, values = window.read()
         if event in (None, 'Cancel'):
             window.close()
+            host.Logout()
+            print('Logged out from Koala')
             sys.exit()
         elif event == 'Submit':
             if values['-10X-']:
@@ -186,7 +128,7 @@ def setMicroscopeObjective():
     return MO
         
         
-def setSavingParameters():
+def setSavingParameters(host):
     '''
     Displays a GUI to allow the user to set saving parameters for an experiment, 
     and remembers the previous values selected by the user.
@@ -228,6 +170,8 @@ def setSavingParameters():
             saveFolder = default_saveFolder
             saveSubFolder = default_saveSubFolder
             window.close()
+            host.Logout()
+            print('Logged out from Koala')
             sys.exit()
         elif event == 'Submit':
             # If the user submits, update the user settings with the new values
@@ -246,7 +190,7 @@ def setSavingParameters():
     return userID, saveFolder, saveSubFolder
     
 
-def setVideoParameters():
+def setVideoParameters(host):
     '''
     Generates user interface window for video parameters
 
@@ -282,6 +226,8 @@ def setVideoParameters():
             frameRate = default_frameRate
             maxTime = default_maxTime
             window.close()
+            host.Logout()
+            print('Logged out from Koala')
             sys.exit()
         elif event == 'Submit':
             # If the user submits, update the user settings with the new values
@@ -301,7 +247,7 @@ def setVideoParameters():
     return frameRate,maxTime
 
 
-def setWavelengthArray(MonoOrPoly):
+def setWavelengthArray(MonoOrPoly, host):
     '''
     Generates user interface window for selecting the wavelengths. Returns a
     wavelength array containing all the wavelengths that are going to be used
@@ -348,6 +294,8 @@ def setWavelengthArray(MonoOrPoly):
                 min_value = default_min_wl
                 max_value = default_max_wl
                 window.close()
+                host.Logout()
+                print('Logged out from Koala')
                 sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
@@ -403,6 +351,8 @@ def setWavelengthArray(MonoOrPoly):
                 num_values = default_n
                 wavelength = default_wl
                 window.close()
+                host.Logout()
+                print('Logged out from Koala')
                 sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
@@ -421,7 +371,7 @@ def setWavelengthArray(MonoOrPoly):
         return wls_array
 
 
-def setOPLarray(wls):
+def setOPLarray(wls, host):
     '''
     Sets the optical path length (OPL) array by asking the user to select a txt 
     file containing the optimal OPL values for the present acquisition.
@@ -457,6 +407,8 @@ def setOPLarray(wls):
             # If the user cancels, return the default values
             oplPath = default_oplPath
             window.close()
+            host.Logout()
+            print('Logged out from Koala')
             sys.exit()
         elif event == 'Submit':
             # If the user submits, update the user settings with the new values
@@ -480,10 +432,10 @@ def setOPLarray(wls):
     
     # Plot the OPL array and interpolation function
     # dp.plotTable(wls_for_display,OPL_for_display*0.0507+25946,wls/1000,OPL_array*0.0507+25946,'OPL [$\mu$m]', path_log, 'oplTablePlot') # TODO : add if statement for the conversion into micrometers so that its valid for all the magnifications
-    return OPL_array
+    return OPL_array, oplPath
    
 
-def setShutterArray(wls):
+def setShutterArray(wls, host):
     '''
     Sets the shutter speed array by asking the user to select a txt 
     file containing the optimal shutter speed values for the present acquisition.
@@ -519,6 +471,8 @@ def setShutterArray(wls):
             # If the user cancels, return the default values
             shutterPath = default_shutterPath
             window.close()
+            host.Logout()
+            print('Logged out from Koala')
             sys.exit()
         elif event == 'Submit':
             # If the user submits, update the user settings with the new values
@@ -542,10 +496,10 @@ def setShutterArray(wls):
     
     # Plot the shutter array and interpolation function
     # dp.plotTable(wls_for_display,shutter_for_display,wls/1000,shutter_array,'Shutter speed [us]', path_log, 'shutterTablePlot')
-    return shutter_array
+    return shutter_array, shutterPath
 
 
-def setObject():
+def setObject(host):
     '''
     Selects the object that is under experiment.
 
@@ -573,6 +527,8 @@ def setObject():
             break
         if event == 'Cancel':
             window.close()
+            host.Logout()
+            print('Logged out from Koala')
             sys.exit()
     
     # Close the window
@@ -607,12 +563,12 @@ def setupPath(folder1,folder2,folder3,folder4,folder5,folder6):
     return path,pathlog
 
   
-def setMotorSweepParameters():
+def setMotorSweepParameters(host):
     try:        
-        MO = setMicroscopeObjective()
-        wavelengths = setWavelengthArray('P')
-        OPL_array = setOPLarray(wavelengths)
-        shutter_array = setShutterArray(wavelengths)
+        MO = setMicroscopeObjective(host)
+        wavelengths = setWavelengthArray('P', host)
+        OPL_array,_ = setOPLarray(wavelengths,host)
+        shutter_array,_ = setShutterArray(wavelengths, host)
         
         # Create a settings object
         settings = sg.UserSettings()
@@ -639,6 +595,8 @@ def setMotorSweepParameters():
                 step = default_step
                 interval = default_interval
                 window.close()
+                host.Logout()
+                print('Logged out from Koala')
                 sys.exit()
             elif event == 'Submit':
                 # If the user submits, update the user settings with the new values
@@ -659,7 +617,7 @@ def setMotorSweepParameters():
         sys.exit()
 
 
-def askForConfirmation(latest_plot_path):
+def askForConfirmation(latest_plot_path, host):
     layout = [[sg.Text("Was the peak found?")],
               [sg.Image(filename=latest_plot_path)],
               [sg.Button("Yes"), sg.Button("No")]]
@@ -680,7 +638,7 @@ def askForConfirmation(latest_plot_path):
             return 'No'
 
 
-def askForFinerSweep():
+def askForFinerSweep(host):
     layout = [[sg.Text('Do you want to perform a finer sweep?')],
               [sg.Button('Yes'), sg.Button('No')]]
     window = sg.Window('Finer Sweep Confirmation', layout)
@@ -696,7 +654,7 @@ def askForFinerSweep():
     return event
 
 
-def askForNewSweepParameters():
+def askForNewSweepParameters(host):
     """
     Prompt the user to enter new sweep parameters.
     """
@@ -719,6 +677,8 @@ def askForNewSweepParameters():
             # If the user cancels, use default parameters
             step = 100
             interval = 2000
+            host.Logout()
+            print('Logged out from Koala')
             break
         elif event == 'Submit':
             # If the user submits, return the values
@@ -730,7 +690,7 @@ def askForNewSweepParameters():
     return float(interval), float(step)
 
 
-def askForFinerSweepParameters():
+def askForFinerSweepParameters(host):
     """
     Prompt the user to enter finer sweep parameters.
     """
@@ -753,6 +713,8 @@ def askForFinerSweepParameters():
             # If the user cancels, use default parameters
             step = 5
             interval = 100
+            host.Logout()
+            print('Logged out from Koala')
             break
         elif event == 'Submit':
             # If the user submits, return the values
@@ -763,7 +725,7 @@ def askForFinerSweepParameters():
     window.close()
     return float(interval), float(step)
 
-def askForFinerSweepParametersLoop():
+def askForFinerSweepParametersLoop(host):
     """
     Prompt the user to enter finer sweep parameters.
     """
@@ -786,6 +748,8 @@ def askForFinerSweepParametersLoop():
             # If the user cancels, use default parameters
             step = 5
             interval = 50
+            host.Logout()
+            print('Logged out from Koala')
             break
         elif event == 'Submit':
             # If the user submits, return the values
@@ -796,11 +760,11 @@ def askForFinerSweepParametersLoop():
     window.close()
     return float(interval), float(step)
 
-def setShutterSweepParameters():
+def setShutterSweepParameters(host):
     try:            
-        MO = setMicroscopeObjective()
-        wavelengths = setWavelengthArray('P')
-        OPL_array = setOPLarray(wavelengths)
+        MO = setMicroscopeObjective(host)
+        wavelengths = setWavelengthArray('P', host)
+        OPL_array,_ = setOPLarray(wavelengths,host)
 
         return MO,wavelengths,OPL_array
     
@@ -848,22 +812,56 @@ def select_rough_or_not():
             return True
         elif event == "Have Initial Guess Table" or event == sg.WINDOW_CLOSED:
             return False
-        
 
-def show_wavelengths_for_verification(wls):
-    # Create GUI layout
-    rows = [[sg.Text(f"Wavelength: {wl}"), sg.Checkbox('Not satisfying', key=str(wl))] for wl in wls]
-    rows.append([sg.Button('Submit'), sg.Button('Cancel')])
+
+def show_wavelengths_for_verification(wls, host):
+    screen_width, screen_height = 1920, 1080  # Screen dimensions
+    max_elements_per_row = 10  # Maximum number of elements in a single row
     
-    window = sg.Window('Verify Wavelengths', rows)
-    
+    # Calculate the number of rows and columns to fit the screen
+    num_elements = len(wls)
+    num_columns = min(max_elements_per_row, math.ceil(math.sqrt(num_elements)))
+    num_rows = math.ceil(num_elements / num_columns)
+
+    # Header text
+    rows = [[sg.Text("Check all unsatisfactory wavelengths")]]
+
+    # Initialize row_elements and counter
+    row_elements = []
+    counter = 0
+
+    # Add wavelengths with checkboxes
+    for wl in wls:
+        row_elements.extend([
+            sg.Text(f"{round(wl)}"),
+            sg.Checkbox('', key=str(wl))
+        ])
+        counter += 1
+
+        # Check if the row is filled
+        if counter % num_columns == 0:
+            rows.append(row_elements)
+            row_elements = []
+
+    # Add remaining elements to the last row
+    if row_elements:
+        rows.append(row_elements)
+
+    # Add OK and Cancel buttons
+    rows.append([sg.Button('OK'), sg.Button('Cancel')])
+
+    # Create the window
+    window = sg.Window('Verify Wavelengths', rows, resizable=True)
+
     unsatisfactory_wls = []
-    
+
     while True:
         event, values = window.read()
         if event == sg.WIN_CLOSED or event == 'Cancel':
+            host.Logout()
+            print('Logged out from Koala')
             break
-        if event == 'Submit':
+        if event == 'OK':
             for wl_str, checkbox_value in values.items():
                 if checkbox_value:
                     unsatisfactory_wls.append(float(wl_str))  # Convert back to float
@@ -871,3 +869,32 @@ def show_wavelengths_for_verification(wls):
 
     window.close()
     return unsatisfactory_wls
+
+
+def ask_for_center_position(wl, host):
+    layout = [
+        [sg.Text(f"Enter the center position in micrometers for {wl}:")],
+        [sg.InputText(key='center_position')],
+        [sg.Button("Submit"), sg.Button("Cancel")]
+    ]
+    
+    window = sg.Window("Center Position Input", layout)
+    
+    while True:
+        event, values = window.read()
+        
+        if event == sg.WIN_CLOSED or event == 'Cancel':
+            window.close()
+            host.Logout()
+            print('Logged out from Koala')
+            return None  # Return None if the window is closed or cancelled
+        
+        if event == 'Submit':
+            try:
+                center_position = float(values['center_position'])  # Convert to float
+                window.close()
+                return center_position  # Return the entered center position
+            except ValueError:
+                sg.popup_error("Please enter a valid number")  # Show error if not a valid number
+
+    

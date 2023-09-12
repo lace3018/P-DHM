@@ -43,16 +43,19 @@ def Initialize(video=True):
     laser.LaserCheck()
     host=koala.KoalaLogin()
             
-    path,wls,OPL_guesses,shutter_speeds = Inputs.setupExperiment(host)
+    path,wls,OPL_guesses,shutter_speeds,oplPath,shutterPath = Inputs.setupExperiment(host)
+    host.OpenHoloWin()
+    host.OpenPhaseWin()
+    host.OpenIntensityWin()
     
     if path==None:
         Reset(host, 660000, -400358)
         sys.exit()
     if video==True:
-        frameRate,maxtime = Inputs.setVideoParameters()
-        return host,path,frameRate,maxtime,wls,OPL_guesses,shutter_speeds
+        frameRate,maxtime = Inputs.setVideoParameters(host)
+        return host,path,frameRate,maxtime,wls,OPL_guesses,shutter_speeds,oplPath,shutterPath
     else:
-        return host,path,wls,OPL_guesses,shutter_speeds
+        return host,path,wls,OPL_guesses,shutter_speeds,oplPath,shutterPath
     
     
 def get_version():
@@ -63,7 +66,7 @@ def get_version():
     return version
 
 
-def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_speeds):
+def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_speeds,oplPath,shutterPath):
     '''
     Acquires hologram images at multiple wavelengths and saves them to file. 
 
@@ -105,6 +108,8 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
     if frame==0:
         version = get_version()
         file.write(f'Acquisition code version: {version}\n')
+        file.write(f'OPL table selected: {oplPath}\n')
+        file.write(f'Shutter table selected: {shutterPath}\n')
         file.write("frame"+"\t"+"wavelength"+"\t"+"time"+"\t"+"shutter speed"+"\n")
     
     # Acquisition loop

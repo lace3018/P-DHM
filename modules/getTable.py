@@ -64,14 +64,14 @@ def process_OPL(position, contrast, wavelength, path_save, process):
         contrast_no_outliers = contrast_no_outliers[1:-1]
     
         # Interpolate the data using cubic spline
-        k = min(4, len(position_no_outliers) - 1)
-        spline = UnivariateSpline(position_no_outliers, contrast_no_outliers, k=k)
+        k = 3
+        spline = UnivariateSpline(position_no_outliers, contrast_no_outliers, k=k, s=0.5)
         new_position = np.linspace(position_no_outliers.min(), position_no_outliers.max(), 1000)
         interpolated_contrast = spline(new_position)
     
         # Plot the data
         plt.figure()
-        plt.plot(motor.qc2um(position), contrast, 'bo')
+        plt.plot(motor.qc2um(position), contrast, 'bo', alpha=0.3)
         plt.plot(motor.qc2um(position_no_outliers), contrast_no_outliers, ls = 'none', marker = 'o', markersize=5, markerfacecolor='none', markeredgecolor='g')
         plt.plot(motor.qc2um(new_position), interpolated_contrast, 'g--')
         
@@ -111,6 +111,75 @@ def process_OPL(position, contrast, wavelength, path_save, process):
     return optimal_OPL
 
 
+def getOptimalPositions(wls, OPL_array, shutter_array, interval, step, save_path, log_path, host, specific_wls=None):
+    
+    optimal_OPL_list = []
+    RFSwitchState=laser.readRFSwitch()
+    
+    # If specific_wls is provided, use it, else use the original wls
+    wls_to_optimize = specific_wls if specific_wls else wls
+    indices = np.nonzero(np.in1d(wls,specific_wls))[0] if specific_wls else range(0, len(wls))
+    
+    if RFSwitchState==1 and wls_to_optimize[0]<700000:
+        laser.switchCrystal(RFSwitchState)
+        RFSwitchState=0
+    
+    for wl,i in zip(wls_to_optimize, indices):
+        if laser.check_for_crystal_switch(wl, RFSwitchState) == True:
+            laser.switchCrystal(RFSwitchState)
+            RFSwitchState = 1
+        
+        laser.setWavelength(wl)
+
+        # Balance the interferometer
+        position, contrast, _ = motor.balanceInterferometer(host, wl, OPL_array[i], shutter_array[i], save_path, interval/2, step)    
+        
+        # Process the result, plot and find optimal OPL
+        optimal_OPL = process_OPL(position, contrast, wl, save_path, process=True)     
+        optimal_OPL_list.append(optimal_OPL)
+        
+        # Open the image file using the default associated program
+        os.startfile(f"{log_path}\opl_curve_{str(round(wl))}_pm.png")
+        
+    return optimal_OPL_list
+
+
+def determine_offset(wls, OPL_array, shutter_array, save_path, interval, step, host):
+    # Determine an offset by making a sweep around the initial guess
+    offset_found = False
+    while not offset_found:
+        initial_wl = wls[int(len(wls)/2)]  # Choose a representative wavelength
+        initial_OPL_guess = OPL_array[int(len(wls)/2)]  # Choose a representative OPL guess
+        interval_sweep = interval
+        step_sweep = step
+    
+        finer_sweep = False
+        while not offset_found:
+            pos, contrast, found_OPL = motor.balanceInterferometer(host, initial_wl, initial_OPL_guess, shutter_array[int(len(wls)/2)], save_path, interval_sweep/2, step_sweep)
+            dp.plotOPLcurves(pos, contrast, 'temp.png')
+            response = Inputs.askForConfirmation('temp.png', host)
+    
+            if response == 'Yes':
+                finer_sweep_required = Inputs.askForFinerSweep(host)
+                
+                if finer_sweep_required == 'Yes':
+                    initial_OPL_guess = found_OPL  # Update the initial OPL guess
+                    interval_sweep, step_sweep = Inputs.askForFinerSweepParameters(host)
+                    finer_sweep = True
+                else:
+                    offset_found = True
+            else:
+                if finer_sweep:  # If a finer sweep was done, and no peak was found, ask for wider interval and step
+                    interval_sweep, step_sweep = Inputs.askForNewSweepParameters(host)
+                else:  # If no peak was found in the coarse sweep, repeat the coarse sweep with wider parameters
+                    interval_coarse, step_coarse = Inputs.askForNewSweepParameters(host)
+                    interval_sweep = interval_coarse
+                    step_sweep = step_coarse
+      
+    dp.close()
+    return found_OPL
+
+        
 def getOPLTable():  
     '''
     Generates and save optimal OPL table for given sample.
@@ -124,9 +193,8 @@ def getOPLTable():
     
     RFSwitchState=laser.readRFSwitch()
     
-    optimal_OPL_list=[]  
-    sample = Inputs.setObject()
-    MO,wls,OPL_array,shutter_array,interval_coarse,step_coarse=Inputs.setMotorSweepParameters()
+    sample = Inputs.setObject(host)
+    MO,wls,OPL_array,shutter_array,interval,step=Inputs.setMotorSweepParameters(host)
     today = datetime.today().strftime('%Y%m%d')
      
     base_path = f"tables/{sample}/{MO}/OPL/{today}"
@@ -136,76 +204,40 @@ def getOPLTable():
     if not os.path.exists(log_path):
         os.makedirs(log_path)
     
-    # Determine an offset by making a sweep around the initial guess
-    offset_found = False
-    while not offset_found:
-        initial_wl = wls[int(len(wls)/2)]  # Choose a representative wavelength
-        initial_OPL_guess = OPL_array[int(len(wls)/2)]  # Choose a representative OPL guess
-        interval_sweep = interval_coarse
-        step_sweep = step_coarse
-    
-        finer_sweep = False
-        while not offset_found:
-            pos, contrast, found_OPL = motor.balanceInterferometer(host, initial_wl, initial_OPL_guess, shutter_array[int(len(wls)/2)], save_path, interval_sweep/2, step_sweep)
-            dp.plotOPLcurves(pos, contrast, 'temp.png')
-            response = Inputs.askForConfirmation('temp.png')
-    
-            if response == 'Yes':
-                finer_sweep_required = Inputs.askForFinerSweep()
-                
-                if finer_sweep_required == 'Yes':
-                    initial_OPL_guess = found_OPL  # Update the initial OPL guess
-                    interval_sweep, step_sweep = Inputs.askForFinerSweepParameters()
-                    finer_sweep = True
-                else:
-                    offset_found = True
-            else:
-                if finer_sweep:  # If a finer sweep was done, and no peak was found, ask for wider interval and step
-                    interval_sweep, step_sweep = Inputs.askForNewSweepParameters()
-                else:  # If no peak was found in the coarse sweep, repeat the coarse sweep with wider parameters
-                    interval_coarse, step_coarse = Inputs.askForNewSweepParameters()
-                    interval_sweep = interval_coarse
-                    step_sweep = step_coarse
-      
-    dp.close()
+    # Determine offset
+    found_OPL = determine_offset(wls, OPL_array, shutter_array, save_path, interval, step, host)
     
     # Ask for fine sweep parameters
-    interval_fine, step_fine = Inputs.askForFinerSweepParametersLoop()
+    interval_fine, step_fine = Inputs.askForFinerSweepParametersLoop(host)
 
-    offset_diffs = [found_OPL - OPL_array[int(len(wls)/2)]]  # A list to store all offset differences.
+    offset = found_OPL - OPL_array[int(len(wls)/2)]
+    print(offset)
     
-    for wl,i in zip(wls,range(0,len(wls))):
-        if laser.check_for_crystal_switch(wl, RFSwitchState) == True:
-            laser.switchCrystal(RFSwitchState)
-            RFSwitchState = 1
-        
-        laser.setWavelength(wl)
-        
-        # Adjust the OPL guess with the current average offset
-        adjusted_OPL_guess = OPL_array[i] + np.mean(offset_diffs) if offset_diffs else OPL_array[i]
-
-        # Balance the interferometer
-        position, contrast, _ = motor.balanceInterferometer(host, wl, adjusted_OPL_guess, shutter_array[i], save_path, interval_fine/2, step_fine)    
-        
-        # Process the result, plot and find optimal OPL
-        optimal_OPL = process_OPL(position, contrast, wl, save_path, process=True)   
-        
-        # Find the difference between the optimal OPL and the adjusted OPL guess
-        offset_diff = optimal_OPL - OPL_array[i]
-
-        # Append the offset difference to the list
-        offset_diffs.append(offset_diff)
+    optimal_OPL_list = getOptimalPositions(wls, OPL_array + offset, shutter_array, interval_fine, step_fine, save_path, log_path, host)
+    optimal_OPL_list = np.asarray(optimal_OPL_list)
     
-        optimal_OPL_list.append(optimal_OPL)
+    while True:  # This will keep looping until the user says there are no unsatisfactory wavelengths
+        unsatisfactory_wavelengths = Inputs.show_wavelengths_for_verification(wls,host)
+        print(unsatisfactory_wavelengths)
         
-        # Open the image file using the default associated program
-        os.startfile(f"{log_path}\opl_curve_{str(round(wl))}_pm.png")
-            
-    unsatisfactory_wavelengths = Inputs.show_wavelengths_for_verification(wls)
-    print(unsatisfactory_wavelengths)
+        if not unsatisfactory_wavelengths:
+            break  # Exit the loop if there are no unsatisfactory wavelengths
+        
+        # Identify indices of unsatisfactory wavelengths in wls
+        unsatisfactory_indices = np.nonzero(np.in1d(wls, unsatisfactory_wavelengths))
+        print(unsatisfactory_indices)
+        
+        interval, step = Inputs.askForFinerSweepParametersLoop(host)
+        
+        # Re-run the optimization for unsatisfactory wavelengths
+        new_optimal_OPL_list = getOptimalPositions(wls, optimal_OPL_list, shutter_array, interval, step, save_path, log_path, host, specific_wls=unsatisfactory_wavelengths)
+        
+        # Update optimal_OPL_list for these unsatisfactory wavelengths
+        for i, new_opt in zip(unsatisfactory_indices[0], new_optimal_OPL_list):
+            print(i, new_opt)
+            optimal_OPL_list[i] = new_opt
     
     # Save OPL table  
-    optimal_OPL_list = np.asarray(optimal_OPL_list)
     filename = f"table_{int(len(wls))}points.txt"
     np.savetxt(os.path.join(save_path, filename), np.vstack((wls/1000, optimal_OPL_list)).T, header='wavelength [nm] \t optimal OPR [qc]')
     
@@ -249,10 +281,10 @@ def getOPLTableRough():
     RFSwitchState=laser.readRFSwitch()
     
     optimal_OPL_list=[]  
-    sample = Inputs.setObject()
-    MO = Inputs.setMicroscopeObjective()
-    wls = Inputs.setWavelengthArray('P')
-    shutter_array = Inputs.setShutterArray(wls)
+    sample = Inputs.setObject(host)
+    MO = Inputs.setMicroscopeObjective(host)
+    wls = Inputs.setWavelengthArray('P',host)
+    shutter_array = Inputs.setShutterArray(wls,host)
     today = datetime.today().strftime('%Y%m%d')
      
     base_path = f"tables/{sample}/{MO}/OPL/{today}"
@@ -300,8 +332,8 @@ def getShutterTable():
         
     RFSwitchState=laser.readRFSwitch()
     
-    sample = Inputs.setObject()
-    MO,wls,OPL_array=Inputs.setShutterSweepParameters()
+    sample = Inputs.setObject(host)
+    MO,wls,OPL_array=Inputs.setShutterSweepParameters(host)
     
     optimal_shutter_list = []
     for wl,i in zip(wls,range(len(wls))):
