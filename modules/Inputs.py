@@ -65,7 +65,7 @@ def setupExperiment(host):
         shutter_array, shutterPath = setShutterArray(wavelengths, host)
         
         # Load configuration in Koala
-        configID = {'10x': 132,'20x': 133,'40x': 134,'100x': 135} # Create a dictionary to map MOs to IDs
+        configID = {'5x':131, '10x': 132, '20x': 133, '40x': 134, '63x': 135, '100x': 135} # Create a dictionary to map MOs to IDs
         host.OpenConfig(configID[MO])
         print('MO config set in Koala')
         
@@ -84,21 +84,17 @@ def setMicroscopeObjective(host):
     '''
     Displays a GUI window to allow the user to select a microscope magnification, saves the chosen
     magnification in the user settings, and returns the chosen magnification string.
-
-    Returns
-    -------
-    MO : str
-        Microscope objective magnification.
-
     '''
     settings = sg.UserSettings()
     magnification = settings.get('-MAGNIFICATION-', '20x')
     
     layout = [
         [sg.Text('Select microscope magnification:')],
+        [sg.Radio('5x', 'MAGNIFICATION', key='-5X-', default=magnification=='5x')],
         [sg.Radio('10x', 'MAGNIFICATION', key='-10X-', default=magnification=='10x')],
         [sg.Radio('20x', 'MAGNIFICATION', key='-20X-', default=magnification=='20x')],
         [sg.Radio('40x', 'MAGNIFICATION', key='-40X-', default=magnification=='40x')],
+        [sg.Radio('63x', 'MAGNIFICATION', key='-63X-', default=magnification=='63x')],  # Add this line
         [sg.Radio('100x', 'MAGNIFICATION', key='-100X-', default=magnification=='100x')],
         [sg.Button('Submit'), sg.Button('Cancel')]
     ]
@@ -115,17 +111,22 @@ def setMicroscopeObjective(host):
         elif event == 'Submit':
             if values['-10X-']:
                 MO = '10x'
+            elif values['-5X-']:
+                MO = '5x'
             elif values['-20X-']:
                 MO = '20x'
             elif values['-40X-']:
                 MO = '40x'
+            elif values['-63X-']:
+                MO = '63x'
             else:
                 MO = '100x'
             settings['-MAGNIFICATION-'] = MO
-            break   
+            break
     window.close()
     
     return MO
+
         
         
 def setSavingParameters(host):
@@ -247,24 +248,33 @@ def setVideoParameters(host):
     return frameRate,maxTime
 
 
-def setWavelengthArray(MonoOrPoly, host):
+def setWavelengthArray(MonoOrPoly, host, custom_wavelengths=None):
     '''
-    Generates user interface window for selecting the wavelengths. Returns a
-    wavelength array containing all the wavelengths that are going to be used
-    for the P-DHM loop.
+    Generates user interface window for selecting the wavelengths or allows the use of a custom wavelengths array. 
+    Returns a wavelength array containing all the wavelengths that are going to be used for the P-DHM loop.
 
     Parameters
     ----------
     MonoOrPoly : str
         'M' for monochromatic and 'P' for polychromatic.
+    host : object
+        The host system interface object (e.g., for logging or system calls).
+    custom_wavelengths : list, optional
+        A list of custom wavelengths provided by the user. If None, the GUI will be used to select wavelengths.
 
     Returns
     -------
     wls_array : ndarray
-        wavelength array.
+        Wavelength array.
 
     '''
-    if MonoOrPoly=='P':
+    if custom_wavelengths is not None:
+        # Convert the custom wavelengths from nm to the desired unit if necessary, and ensure they're in a numpy array
+        wls_array = np.asarray(custom_wavelengths).astype('float')
+        print(wls_array)
+        return wls_array
+
+    if MonoOrPoly == 'P':
         
         # Set up the user settings object
         settings = sg.UserSettings()
@@ -275,11 +285,12 @@ def setWavelengthArray(MonoOrPoly, host):
         default_max_wl = settings.get('max_value', '850')
         
         layout = [
-        [sg.Text('Number of wavelengths: '), sg.Input(key='num_values',default_text=default_n)],
-        [sg.Text('Minimum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=default_min_wl, key='min_value')],
-        [sg.Text('Maximum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=850, key='max_value')],
-        [sg.Text('Add a wavelength to the array? [nm]',size=(30,1)),sg.InputText(default_text='No',key='added_wl')],
-        [sg.Submit(), sg.Cancel()]
+            [sg.Text('Number of wavelengths: '), sg.Input(key='num_values', default_text=default_n)],
+            [sg.Text('Minimum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=default_min_wl, key='min_value')],
+            [sg.Text('Maximum wavelength: '), sg.Slider(range=(500, 850), orientation='h', size=(20, 15), default_value=default_max_wl, key='max_value')],
+            [sg.Text('Add a wavelength to the array? [nm]', size=(30,1)), sg.InputText(default_text='No', key='added_wl')],
+            [sg.Text('Or enter custom wavelengths (comma-separated, e.g., 600,610,620):'), sg.InputText(key='custom_wavelengths')],
+            [sg.Submit(), sg.Cancel()]
         ]
         
         # Create the window
@@ -290,41 +301,44 @@ def setWavelengthArray(MonoOrPoly, host):
             event, values = window.read()
             if event in (None, 'Cancel'):
                 # If the user cancels, return the default values
-                num_values = default_n
-                min_value = default_min_wl
-                max_value = default_max_wl
                 window.close()
                 host.Logout()
                 print('Logged out from Koala')
                 sys.exit()
             elif event == 'Submit':
-                # If the user submits, update the user settings with the new values
-                settings['num_values'] = values['num_values']
-                settings['min_value'] = values['min_value']
-                settings['max_value'] = values['max_value']
-                # Return the new values
-                num_values = int(values['num_values'])
-                min_value = int(values['min_value']*1000)
-                max_value = int(values['max_value']*1000)
-                # Generate the array
-                if num_values == 1:
-                    wls_array = [min_value]
+                # If the user submits, check for custom wavelengths input
+                if values['custom_wavelengths']:
+                    custom_wavelengths_str = values['custom_wavelengths']
+                    wls_array = np.array([int(float(wl)*1000) for wl in custom_wavelengths_str.split(',')]).astype('float')
                 else:
-                    step = (max_value - min_value) / (num_values - 1)
-                    wls_array = [round(min_value + step * i) for i in range(num_values)]
+                    # Update the user settings with the new values
+                    settings['num_values'] = values['num_values']
+                    settings['min_value'] = values['min_value']
+                    settings['max_value'] = values['max_value']
+                    # Generate the array based on the GUI inputs
+                    num_values = int(values['num_values'])
+                    min_value = int(values['min_value'] * 1000)
+                    max_value = int(values['max_value'] * 1000)
+                    if num_values == 1:
+                        wls_array = [min_value]
+                    else:
+                        step = (max_value - min_value) / (num_values - 1)
+                        wls_array = [round(min_value + step * i) for i in range(num_values)]
+                
                 break
         
         window.close()
         
-        if values['added_wl']!='No':
-            wl2add = int(float(values['added_wl'])*1000)
-            ii = np.searchsorted(wls_array,wl2add)
-            wls_array = np.insert(wls_array,ii,wl2add)
-        
+        # If an additional wavelength was added via the original method
+        if values.get('added_wl') and values['added_wl'] != 'No':
+            wl2add = int(float(values['added_wl']) * 1000)
+            ii = np.searchsorted(wls_array, wl2add)
+            wls_array = np.insert(wls_array, ii, wl2add)
+            
         wls_array = np.asarray(wls_array).astype('float')
         print(wls_array)
         return wls_array
-    
+        
     else:
         # Set up the user settings object
         settings = sg.UserSettings()
@@ -369,6 +383,7 @@ def setWavelengthArray(MonoOrPoly, host):
         
         wls_array = np.asarray(wls_array).astype('float')
         return wls_array
+
 
 
 def setOPLarray(wls, host):
@@ -897,4 +912,26 @@ def ask_for_center_position(wl, host):
             except ValueError:
                 sg.popup_error("Please enter a valid number")  # Show error if not a valid number
 
-    
+
+def ask_for_shutter():
+    # Layout definition
+    layout = [
+        [sg.Text("Do you want to measure a shutter table?")],
+        [sg.Button("Yes"), sg.Button("No")]
+    ]
+
+    # Create the window
+    window = sg.Window("Choose Option", layout)
+
+    # Event loop to process events and get the value of input
+    while True:
+        event, values = window.read()
+        
+        # If user closes window or clicks "No"
+        if event == sg.WIN_CLOSED or event == "No":
+            window.close()
+            return False
+        # If user clicks "Yes"
+        elif event == "Yes":
+            window.close()
+            return True

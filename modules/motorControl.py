@@ -23,7 +23,7 @@ def balanceInterferometer(host, wl, OPL_guess, shutter_speed, path, half_interva
         Array of wavelengths.
     OPL_guess : float
         OPL value that the function sweeps around.
-    shutter_speed : numpy array
+    shutter_speed : float
         Pre-selected shutter speeds for each wavelength.
     half_interval : float, optional
         Half interval for sweep around OPL guess [um]. The default is 200.
@@ -98,10 +98,10 @@ def findCenterPosition(host):
     # Setup the laser and camera
     laser.setAmplitude(100)
     laser.setWavelength(660000)
-    host.SetCameraShutterUs(1230)
+    host.SetCameraShutterUs(600)
 
     # Create array of positions
-    positions = np.linspace(2000,8000,300)
+    positions = np.linspace(-20000,30000,300)
     positions_qc = um2qc(positions)
     print(positions_qc)
     

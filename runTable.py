@@ -23,6 +23,9 @@ if table_type == 'OPL':
         gt.getOPLTableRough()
     else:
         gt.getOPLTable()
+    shutter_or_not = Inputs.ask_for_shutter()
+    if shutter_or_not == True:
+        gt.getShutterTable()
 if table_type == 'shutter':
     gt.getShutterTable()
     

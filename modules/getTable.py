@@ -5,12 +5,6 @@ Created on Tue Aug  9 10:55:04 2022
 Measure and save optical path length (OPL) position table for the motorized
 part in the DHM reference arm.
 
-If two tables are generated on the same day, the first one will be erased.
---> Tell me if this is a problem, it could be changed. For now it seems better
-    this way because the tables are stable for multiple days. The most probable
-    scenario for saving two tables on the same day is if there was a problem with
-    the first one, making it desirable for it to be erased.
-
 @author: lace3018
 """
 
@@ -51,7 +45,13 @@ def uniquify_top_directory(base_path):
 
 
 def process_OPL(position, contrast, wavelength, path_save, process):
-    if process==True:
+    if not isinstance(process, bool):
+        raise ValueError("process should be a boolean value")
+    
+    if len(position) == 0 or len(contrast) == 0:
+        raise ValueError("position and contrast should be non-empty")
+    
+    if process:
         # Compute the derivatives and use them to remove outliers
         first_derivative = np.gradient(contrast)
         second_derivative = np.gradient(first_derivative)
@@ -59,12 +59,32 @@ def process_OPL(position, contrast, wavelength, path_save, process):
         position_no_outliers = np.delete(position, outlier_indices)
         contrast_no_outliers = np.delete(contrast, outlier_indices)
         
-        # Remove first and last points to get rid of edge effects
-        position_no_outliers = position_no_outliers[1:-1]
-        contrast_no_outliers = contrast_no_outliers[1:-1]
-    
-        # Interpolate the data using cubic spline
-        k = 3
+        # Check if arrays are not empty
+        if len(position_no_outliers) == 0 or len(contrast_no_outliers) == 0:
+            # Handle empty arrays (e.g., return a default value or skip processing)
+            position_no_outliers = np.zeros(3)
+            contrast_no_outliers = np.zeros(3)
+        
+        # Safely remove first and last points
+        if len(position_no_outliers) > 2:
+            position_no_outliers = position_no_outliers[1:-1]
+            contrast_no_outliers = contrast_no_outliers[1:-1]
+        
+        # Determine the degree of the spline interpolation
+        num_points = len(position_no_outliers)
+        if num_points >= 4:
+            k = 3  # Cubic spline
+        elif num_points == 3:
+            k = 2  # Quadratic spline
+        elif num_points == 2:
+            k = 1  # Linear spline
+        else:
+            k=1
+            # Handle the case with less than 2 points
+            position_no_outliers = np.zeros(3)
+            contrast_no_outliers = np.zeros(3)
+        
+        # Interpolate the data using the determined degree of spline
         spline = UnivariateSpline(position_no_outliers, contrast_no_outliers, k=k, s=0.5)
         new_position = np.linspace(position_no_outliers.min(), position_no_outliers.max(), 1000)
         interpolated_contrast = spline(new_position)
@@ -85,8 +105,8 @@ def process_OPL(position, contrast, wavelength, path_save, process):
         plt.title(f'{wavelength} pm')
         plt.grid(True)
         
-        plt.savefig(f"{path_save}\Log\opl_curve_{str(round(wavelength))}_pm.png")
-        np.savetxt(f"{path_save}\Log\opl_curve_{str(round(wavelength))}pm.txt",np.vstack((position,contrast)).T,header='position [qc] \t contrast [-]')
+        plt.savefig(f"{path_save}\Log\opl_curve_{str(int(round(wavelength)))}_pm.png")
+        np.savetxt(f"{path_save}\Log\opl_curve_{str(int(round(wavelength)))}pm.txt",np.vstack((position,contrast)).T,header='position [qc] \t contrast [-]')
         plt.close()
     else:
         # Plot the data
@@ -103,8 +123,8 @@ def process_OPL(position, contrast, wavelength, path_save, process):
         plt.title(f'{wavelength} pm')
         plt.grid(True)
         
-        plt.savefig(f"{path_save}\Log\opl_curve_{str(round(wavelength))}_pm.png")
-        np.savetxt(f"{path_save}\Log\opl_curve_{str(round(wavelength))}pm.txt",np.vstack((position,contrast)).T,header='position [qc] \t contrast [-]')
+        plt.savefig(f"{path_save}\Log\opl_curve_{str(int(round(wavelength)))}_pm.png")
+        np.savetxt(f"{path_save}\Log\opl_curve_{str(int(round(wavelength)))}pm.txt",np.vstack((position,contrast)).T,header='position [qc] \t contrast [-]')
         plt.close()
         
     
@@ -139,7 +159,9 @@ def getOptimalPositions(wls, OPL_array, shutter_array, interval, step, save_path
         optimal_OPL_list.append(optimal_OPL)
         
         # Open the image file using the default associated program
-        os.startfile(f"{log_path}\opl_curve_{str(round(wl))}_pm.png")
+        # os.startfile(f"{log_path}\opl_curve_{str(round(wl))}_pm.png")
+    os.startfile(log_path)
+
         
     return optimal_OPL_list
 
@@ -284,7 +306,7 @@ def getOPLTableRough():
     sample = Inputs.setObject(host)
     MO = Inputs.setMicroscopeObjective(host)
     wls = Inputs.setWavelengthArray('P',host)
-    shutter_array = Inputs.setShutterArray(wls,host)
+    shutter_array, _ = Inputs.setShutterArray(wls,host)
     today = datetime.today().strftime('%Y%m%d')
      
     base_path = f"tables/{sample}/{MO}/OPL/{today}"
