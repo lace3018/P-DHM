@@ -809,24 +809,19 @@ def select_OPL_or_shutter():
             return None
 
 
-def select_rough_or_not():
+def select_table_acquisition_type():
     # Layout definition
     layout = [
-        [sg.Text("Do you want a rough table or do you already have a table for initial guess?")],
-        [sg.Button("Rough Table"), sg.Button("Have Initial Guess Table")]
+        [sg.Text("Select the type of table acquisition")],
+        [sg.Button("Initial Rough Table (only if no previous data available)"), sg.Button("Precise Table (needs a pre-saved table of similar sample)"), sg.Button("Table Offset (fast option if pre-saved table of same sample available)")]
     ]
 
     # Create the window
     window = sg.Window("Choose Table Type", layout)
 
-    # Event loop to process events and get the values of the inputs
-    while True:
-        event, values = window.read()
-        window.close()
-        if event == "Rough Table":
-            return True
-        elif event == "Have Initial Guess Table" or event == sg.WINDOW_CLOSED:
-            return False
+    event, values = window.read()
+    window.close()
+    return event
 
 
 def show_wavelengths_for_verification(wls, host):

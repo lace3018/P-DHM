@@ -18,11 +18,14 @@ laser.LaserCheck()
 table_type = Inputs.select_OPL_or_shutter()
 
 if table_type == 'OPL': 
-    rough = Inputs.select_rough_or_not()
-    if rough == True:
+    table_acquisition_type = Inputs.select_table_acquisition_type()
+    if table_acquisition_type=='Initial Rough Table (only if no previous data available)':
         gt.getOPLTableRough()
-    else:
+    if table_acquisition_type=='Precise Table (needs a pre-saved table of similar sample)':
         gt.getOPLTable()
+    if table_acquisition_type=='Table Offset (fast option if pre-saved table of same sample available)':
+        gt.getOPLTable_from_offset()
+        
     shutter_or_not = Inputs.ask_for_shutter()
     if shutter_or_not == True:
         gt.getShutterTable()

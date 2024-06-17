@@ -201,6 +201,52 @@ def determine_offset(wls, OPL_array, shutter_array, save_path, interval, step, h
     dp.close()
     return found_OPL
 
+
+def getOPLTable_from_offset():
+    '''
+    Generates and save optimal OPL table for given sample by offsetting pre-saved table.
+    '''
+
+    laser.LaserCheck()
+    laser.EmissionOn()
+    laser.setAmplitude(100)
+        
+    host = koala.KoalaLogin()
+    
+    RFSwitchState=laser.readRFSwitch()
+    
+    sample = Inputs.setObject(host)
+    MO,wls,OPL_array,shutter_array,interval,step=Inputs.setMotorSweepParameters(host)
+    today = datetime.today().strftime('%Y%m%d')
+     
+    base_path = f"tables/{sample}/{MO}/OPL/{today}"
+    save_path = uniquify_top_directory(base_path)
+    log_path = os.path.join(save_path, "Log")
+    
+    if not os.path.exists(log_path):
+        os.makedirs(log_path)
+    
+    # Determine offset
+    found_OPL = determine_offset(wls, OPL_array, shutter_array, save_path, interval, step, host)
+
+    offset = found_OPL - OPL_array[int(len(wls)/2)]
+    print(offset)
+    
+    optimal_OPL_list = OPL_array + offset
+    optimal_OPL_list = np.asarray(optimal_OPL_list)
+    
+    # Save OPL table  
+    filename = f"table_{int(len(wls))}points.txt"
+    np.savetxt(os.path.join(save_path, filename), np.vstack((wls/1000, optimal_OPL_list)).T, header='wavelength [nm] \t optimal OPR [qc]')
+    
+    laser.RFPowerOff()
+    time.sleep(0.3)
+    laser.RFSwitch(RFSwitchState)
+    time.sleep(0.3)  
+    
+    laser.CloseAll()
+    
+    host.Logout()    
         
 def getOPLTable():  
     '''
