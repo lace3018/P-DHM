@@ -248,14 +248,14 @@ def getOPLTable_from_offset():
     
     host.Logout()    
         
-def getOPLTable():  
+def getOPLTable(amplitude):  
     '''
     Generates and save optimal OPL table for given sample.
     '''
 
     laser.LaserCheck()
     laser.EmissionOn()
-    laser.setAmplitude(100)
+    laser.setAmplitude(amplitude)
         
     host = koala.KoalaLogin()
     
@@ -390,11 +390,11 @@ def getOPLTableRough():
     
     host.Logout()
 
-
+'''
 def getShutterTable():    
     laser.LaserCheck()
     laser.EmissionOn()
-    laser.setAmplitude(100)
+    laser.setAmplitude(10)
 
     host = koala.KoalaLogin()
         
@@ -485,3 +485,93 @@ def getShutterTable():
     laser.CloseAll()
     
     host.Logout()
+ '''   
+    
+def getShutterTable(amplitude):    
+    laser.LaserCheck()
+    laser.EmissionOn()
+    laser.setAmplitude(amplitude)
+
+    host = koala.KoalaLogin()
+        
+    RFSwitchState = laser.readRFSwitch()
+    sample = Inputs.setObject(host)
+    MO, wls, OPL_array = Inputs.setShutterSweepParameters(host)
+    
+    optimal_shutter_list = []
+    for wl, i in zip(wls, range(len(wls))):
+        if laser.check_for_crystal_switch(wl, RFSwitchState):
+            laser.switchCrystal(RFSwitchState)
+            RFSwitchState = 1
+        
+        laser.setWavelength(wl)
+        host.MoveOPL(OPL_array[i])
+        
+        # Binary search approach
+        shutter_min = 30
+        shutter_max = 1e6
+        condition_step = 100
+        optimal_shutter = None
+        
+        max_pixel = [0]
+        print('min, max, step, max_pixel, condition')
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            try:
+                while (shutter_max - shutter_min) > condition_step:
+                    
+                    shutter = (shutter_min + shutter_max) // 2
+                    host.SetCameraShutterUs(shutter)
+                    time.sleep(2*shutter*1e-6)
+                    
+                    host.SaveImageToFile(1, temp_dir + 'holo_temp.tiff')
+                    time.sleep(0.05)
+                    temp_holo = tifffile.imread(temp_dir + 'holo_temp.tiff')
+                    
+                    # Check max pixel value in the hologram
+                    max_pixel_value = np.max(temp_holo)
+                   
+                    if max_pixel_value < 255:  # No saturation
+                        # step = abs(255-shutter_max)//2
+                        # Save this as the optimal shutter time
+                        optimal_shutter = shutter
+                        
+                        # Narrow down to higher exposure times to get closer to saturation
+                        shutter_min = shutter 
+    
+                        # Dynamically increase shutter_max if max_pixel_value is far from saturation
+                        # if max_pixel_value < 250:  # This threshold can be adjusted
+                            # shutter_max = shutter + step  # Increase shutter_max to explore higher exposure times
+                        
+                    else:
+                        # Saturation reached, reduce shutter value to avoid saturation
+                        shutter_max = shutter
+                
+                    print(shutter_min, shutter_max, max_pixel_value, shutter_max - shutter_min)
+            except KeyboardInterrupt:
+                print("Process interrupted by user.")
+                host.Logout()
+                break
+            
+            if optimal_shutter is not None:
+                optimal_shutter_list.append(optimal_shutter)
+                print(f"\n*****\nOptimal shutter for {wl} pm: {optimal_shutter} us\n*****\n")
+
+
+    # Save shutter table
+    base_path = f"tables/{sample}/{MO}/shutter"
+    save_path = uniquify_top_directory(base_path)
+        
+    optimal_shutter_list = np.asarray(optimal_shutter_list)
+    filename = f"table_{int(len(wls))}points.txt"
+    np.savetxt(os.path.join(save_path, filename), np.vstack((wls / 1000, optimal_shutter_list)).T,
+               header='Wavelength [nm] \t Shutter speed [ms]')
+    
+    laser.RFPowerOff()
+    time.sleep(0.3)
+    laser.RFSwitch(RFSwitchState)
+    time.sleep(0.3)    
+    
+    laser.CloseAll()
+    host.Logout()
+    

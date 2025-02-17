@@ -104,38 +104,36 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
     RFSwitchState = laser.readRFSwitch()
     
     log_filename = os.path.join(path, 'Log', 'Log.txt')
-    file = open(log_filename, "a")
-    if frame==0:
-        version = get_version()
-        file.write(f'Acquisition code version: {version}\n')
-        file.write(f'OPL table selected: {oplPath}\n')
-        file.write(f'Shutter table selected: {shutterPath}\n')
-        file.write("frame"+"\t"+"wavelength"+"\t"+"time"+"\t"+"shutter speed"+"\n")
-    
-    # Acquisition loop
-    for i in range(len(wavelengths_array)):
-        wavelength = wavelengths_array[i]
-        laser.setWavelength(wavelength)
-        host.MoveOPL(OPL_guesses[i])
-        host.SetCameraShutterUs((shutter_speeds[i])) # set camera to preset shutter value
+    with open(log_filename, "a") as file:
+        if frame==0:
+            version = get_version()
+            file.write(f'Acquisition code version: {version}\n')
+            file.write(f'OPL table selected: {oplPath}\n')
+            file.write(f'Shutter table selected: {shutterPath}\n')
+            file.write("frame"+"\t"+"wavelength"+"\t"+"time"+"\t"+"shutter speed"+"\n")
         
-        if laser.check_for_crystal_switch(wavelength, RFSwitchState) == True:
-            laser.switchCrystal(RFSwitchState)
-            RFSwitchState = 1
-        
-        time.sleep(0.15) # SLEEP ADDED TO AVOID LATENCY ISSUES
-        host.ComputePhaseCorrection(0,1) # TILT CORRECTION
-        
-        host.SaveImageToFile(1, holo_filenames[i])
-        host.SaveImageToFile(2, intensity_filenames[i])
-        host.SaveImageToFile(4, phase_filenames[i])
-        
-        file.write(str(frame)+"\t"+str(int(wavelength))+"\t"+str(time.time()-starttime)+"\t"+str(shutter_speeds[i])+"\n")
-        
-        # dp.displayAll(holo_filenames[i], intensity_filenames[i], phase_filenames[i], wavelength, frame)
-    
-    # dp.close()
-    file.close()
+        # Acquisition loop
+        for i in range(len(wavelengths_array)):
+            wavelength = wavelengths_array[i]
+            laser.setWavelength(wavelength)
+            host.MoveOPL(OPL_guesses[i])
+            host.SetCameraShutterUs((shutter_speeds[i])) # set camera to preset shutter value
+            
+            if laser.check_for_crystal_switch(wavelength, RFSwitchState) == True:
+                laser.switchCrystal(RFSwitchState)
+                RFSwitchState = 1
+            
+            time.sleep(0.15) # SLEEP ADDED TO AVOID LATENCY ISSUES
+            host.ComputePhaseCorrection(0,1) # TILT CORRECTION
+            
+            host.SaveImageToFile(1, holo_filenames[i])
+            host.SaveImageToFile(2, intensity_filenames[i])
+            host.SaveImageToFile(4, phase_filenames[i])
+            
+            file.write(str(frame)+"\t"+str(int(wavelength))+"\t"+str(time.time()-starttime)+"\t"+str(shutter_speeds[i])+"\n")
+            
+            # dp.displayAll(holo_filenames[i], intensity_filenames[i], phase_filenames[i], wavelength, frame)
+
     
     laser.RFPowerOff()
     

@@ -46,9 +46,9 @@ def balanceInterferometer(host, wl, OPL_guess, shutter_speed, path, half_interva
     step_qc = step * QC_CONVERSION_FACTOR
 
     # Setup the laser and camera
-    laser.setAmplitude(100)
+    # laser.setAmplitude(100)
     laser.setWavelength(wl)
-    host.SetCameraShutterUs(0.3*shutter_speed)
+    host.SetCameraShutterUs(0.7*shutter_speed)
 
     # Create array of positions
     initPos = int(OPL_guess)
@@ -58,7 +58,7 @@ def balanceInterferometer(host, wl, OPL_guess, shutter_speed, path, half_interva
     pos = []
 
     # Setup plot
-    figure, ax = plt.subplots(figsize=(12,6))
+    figure, ax = plt.subplots(figsize=(6,5))
     line1, = ax.plot(pos,contrast,'k-')
     plt.title(str(round(wl))+' pm')
     plt.xlabel('Position [$\mu$m]')

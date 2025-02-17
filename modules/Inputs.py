@@ -211,7 +211,7 @@ def setVideoParameters(host):
     default_maxTime = settings.get('maxTime', '180')
     
     layout = [
-        [sg.Text('Video frame rate [im/min] (integers only)',size=(30,1)),sg.InputText(default_text=default_frameRate, key = 'frameRate')],
+        [sg.Text('Video frame rate [im/min]',size=(30,1)),sg.InputText(default_text=default_frameRate, key = 'frameRate')],
         [sg.Text('Stop acquisition after [min] (integers only)',size=(30,1)),sg.InputText(default_text=default_maxTime, key = 'maxTime')],
         [sg.Submit(), sg.Cancel()]
     ]
@@ -242,7 +242,7 @@ def setVideoParameters(host):
     # Close the window
     window.close()
     
-    frameRate = int(frameRate)/60   # TODO : changer la variable pour que ce soit un vrai framerate ou changer le nom en conséquence
+    frameRate = float(frameRate)/60   # TODO : changer la variable pour que ce soit un vrai framerate ou changer le nom en conséquence
     maxTime = (int(maxTime))*60
     
     return frameRate,maxTime
