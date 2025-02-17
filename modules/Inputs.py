@@ -66,8 +66,8 @@ def setupExperiment(host):
         
         # Load configuration in Koala
         configID = {'5x':131, '10x': 132, '20x': 133, '40x': 134, '63x': 135, '100x': 135} # Create a dictionary to map MOs to IDs
-        host.OpenConfig(configID[MO])
-        print('MO config set in Koala')
+        # host.OpenConfig(configID[MO])
+        # print('MO config set in Koala')
         
         np.savetxt(str(pathlog)+'\wavelengths.txt',wavelengths)
         

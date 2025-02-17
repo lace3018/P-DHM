@@ -124,7 +124,7 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
                 RFSwitchState = 1
             
             time.sleep(0.15) # SLEEP ADDED TO AVOID LATENCY ISSUES
-            host.ComputePhaseCorrection(0,1) # TILT CORRECTION
+            # host.ComputePhaseCorrection(0,1) # TILT CORRECTION
             
             host.SaveImageToFile(1, holo_filenames[i])
             host.SaveImageToFile(2, intensity_filenames[i])
