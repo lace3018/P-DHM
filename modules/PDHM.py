@@ -141,13 +141,13 @@ def Acquire(host,frame,starttime,path,wavelengths_array,OPL_guesses,shutter_spee
     dp.displayPhaseImage(phase_filenames[np.argmin(np.abs(wavelengths_array-660000))], 660000, frame)
     
     # Check holograms for fringes
-    fringe_file_path = f'{path}/Log/fringes_results.txt'
+    # fringe_file_path = f'{path}/Log/fringes_results.txt'
     
-    with open(fringe_file_path, 'a') as fringe_file:
-        for wl, i in zip(wavelengths_array, range(len(wavelengths_array))):
-            has_fringes = checkHolos.detect_fringes(holo_filenames[i], wl, frame)
-            print(wl, 'pm | Fringes detected : ', has_fringes)
-            fringe_file.write(f"Frame {frame} | {wl} pm | Fringes detected : {has_fringes}\n")
+    # with open(fringe_file_path, 'a') as fringe_file:
+    #     for wl, i in zip(wavelengths_array, range(len(wavelengths_array))):
+    #         has_fringes = checkHolos.detect_fringes(holo_filenames[i], wl, frame)
+    #         print(wl, 'pm | Fringes detected : ', has_fringes)
+    #         fringe_file.write(f"Frame {frame} | {wl} pm | Fringes detected : {has_fringes}\n")
 
     laser.RFSwitch(laser.readRFSwitch())
     time.sleep(0.1)
