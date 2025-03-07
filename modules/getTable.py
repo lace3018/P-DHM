@@ -580,8 +580,8 @@ def getAmplitudeTable():
     laser.LaserCheck()
     laser.EmissionOn()
     time.sleep(0.5)
-    laser.daughter_board_disable()
-    laser.FSK_ON()
+    # laser.daughter_board_disable()
+    # laser.FSK_ON()
 
     host = koala.KoalaLogin()
         
@@ -589,7 +589,8 @@ def getAmplitudeTable():
     sample = Inputs.setObject(host)
     MO, wls, OPL_array = Inputs.setShutterSweepParameters(host)
     
-    host.SetCameraShutterUs(2.5*1e3)
+    shutter = 2.5*1e3
+    host.SetCameraShutterUs(shutter)
     
     optimal_amplitude_list = []
     for wl, i in zip(wls, range(len(wls))):
@@ -633,7 +634,7 @@ def getAmplitudeTable():
                         
                     else:
                         # Saturation reached, reduce shutter value to avoid saturation
-                        shutter_max = shutter
+                        amplitude_max = amplitude
             except KeyboardInterrupt:
                 print("Process interrupted by user.")
                 host.Logout()
