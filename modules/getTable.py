@@ -575,3 +575,88 @@ def getShutterTable(amplitude):
     laser.CloseAll()
     host.Logout()
     
+
+def getAmplitudeTable(shutter):    
+    laser.LaserCheck()
+    laser.EmissionOn()
+    time.sleep(0.5)
+    laser.daughter_board_disable()
+    laser.FSK_ON()
+
+    host = koala.KoalaLogin()
+        
+    RFSwitchState = laser.readRFSwitch()
+    sample = Inputs.setObject(host)
+    MO, wls, OPL_array = Inputs.setShutterSweepParameters(host)
+    
+    host.SetCameraShutterUs(2.5*1e3)
+    
+    optimal_amplitude_list = []
+    for wl, i in zip(wls, range(len(wls))):
+        if laser.check_for_crystal_switch(wl, RFSwitchState):
+            laser.switchCrystal(RFSwitchState)
+            RFSwitchState = 1
+        
+        laser.setWavelength(wl)
+        host.MoveOPL(OPL_array[i])
+        
+        # Binary search approach
+        amplitude_min = 1
+        amplitude_max = 80
+        condition_step = 1
+        optimal_amplitude = None
+        
+        max_pixel = [0]
+        print('min, max, step, max_pixel, condition')
+        
+        with tempfile.TemporaryDirectory() as temp_dir:
+            try:
+                while (amplitude_max - amplitude_min) > condition_step:
+                    
+                    amplitude = (amplitude_min + amplitude_max) // 2
+                    laser.setAmplitude(amplitude)
+                    time.sleep(2*shutter*1e-6)
+                    
+                    host.SaveImageToFile(1, temp_dir + 'holo_temp.tiff')
+                    time.sleep(0.05)
+                    temp_holo = tifffile.imread(temp_dir + 'holo_temp.tiff')
+                    
+                    # Check max pixel value in the hologram
+                    max_pixel_value = np.max(temp_holo)
+                   
+                    if max_pixel_value < 255:  # No saturation
+                        # Save this as the optimal shutter time
+                        optimal_amplitude = amplitude
+                        
+                        # Narrow down to higher exposure times to get closer to saturation
+                        amplitude_min = amplitude 
+                        
+                    else:
+                        # Saturation reached, reduce shutter value to avoid saturation
+                        shutter_max = shutter
+            except KeyboardInterrupt:
+                print("Process interrupted by user.")
+                host.Logout()
+                break
+            
+            if optimal_amplitude is not None:
+                optimal_amplitude_list.append(optimal_amplitude)
+                print(f"\n*****\nOptimal amplitude for {wl} pm: {optimal_amplitude} %\n*****\n")
+
+
+    # Save shutter table
+    base_path = f"tables/{sample}/{MO}/amplitude"
+    save_path = uniquify_top_directory(base_path)
+        
+    optimal_amplitude_list = np.asarray(optimal_amplitude_list)
+    filename = f"table_{int(len(wls))}points.txt"
+    np.savetxt(os.path.join(save_path, filename), np.vstack((wls / 1000, optimal_amplitude_list)).T,
+               header='Wavelength [nm] \t Amplitude [%]')
+    
+    laser.RFPowerOff()
+    time.sleep(0.3)
+    laser.RFSwitch(RFSwitchState)
+    time.sleep(0.3)    
+    
+    laser.CloseAll()
+    host.Logout()

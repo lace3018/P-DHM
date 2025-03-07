@@ -235,6 +235,8 @@ def CloseAll():
     EmissionOff()
     # RF power
     RFPowerOff()
+    daughter_board_enable()
+    FSK_OFF()
     # set RF switch to 0
     nkt.registerWriteU8('COM4',30,0x34,0,-1)
     print('RF SWITCH SET TO 0')
@@ -254,3 +256,40 @@ def switchCrystal(RFSwitchState):
     RFSwitch(RFSwitchState)
     RFPowerOn()
     RFSwitchState = readRFSwitch()
+    
+def FSK_ON():
+    '''
+    Turns fast wl switching mode ON
+    '''
+
+    result1 = nkt.registerWriteU8('COM4', 18, 59, 3, -1)
+    result2 = nkt.registerWriteU8('COM4', 23, 59, 3, -1)
+    print('Fast wavelength switching : ON', nkt.RegisterResultTypes(result1)[2:],nkt.RegisterResultTypes(result2)[2:])
+    
+
+def daughter_board_enable():
+    '''
+    '''
+
+    result1 = nkt.registerWriteU8('COM4', 18, 60, 1, -1)
+    result2 = nkt.registerWriteU8('COM4', 23, 60, 1, -1)
+    print('Daughter board : enabled', nkt.RegisterResultTypes(result1)[2:],nkt.RegisterResultTypes(result2)[2:])
+    
+
+def daughter_board_disable():
+    '''
+    '''
+
+    result1 = nkt.registerWriteU8('COM4', 18, 60, 0, -1)
+    result2 = nkt.registerWriteU8('COM4', 23, 60, 0, -1)
+    print('Daughter board : disabled', nkt.RegisterResultTypes(result1)[2:],nkt.RegisterResultTypes(result2)[2:])
+    
+
+def FSK_OFF():
+    '''
+    Turns fast wl switching mode OFF
+    '''
+
+    result1 = nkt.registerWriteU8('COM4', 18, 59, 0, -1)
+    result2 = nkt.registerWriteU8('COM4', 23, 59, 0, -1)
+    print('Fast wavelength switching : OFF', nkt.RegisterResultTypes(result1)[2:], nkt.RegisterResultTypes(result2)[2:])
