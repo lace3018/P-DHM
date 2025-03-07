@@ -576,7 +576,7 @@ def getShutterTable(amplitude):
     host.Logout()
     
 
-def getAmplitudeTable(shutter):    
+def getAmplitudeTable():    
     laser.LaserCheck()
     laser.EmissionOn()
     time.sleep(0.5)

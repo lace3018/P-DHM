@@ -15,7 +15,7 @@ laser.CloseAll()
 time.sleep(1)
 laser.LaserCheck()
 
-table_type = Inputs.select_OPL_or_shutter()
+table_type = Inputs.select_table_type()
 amplitude = 100
 
 if table_type == 'OPL': 
@@ -32,4 +32,6 @@ if table_type == 'OPL':
         gt.getShutterTable(amplitude)
 if table_type == 'shutter':
     gt.getShutterTable(amplitude)
+if table_type == 'amplitude':
+    gt.getAmplitudeTable()
     

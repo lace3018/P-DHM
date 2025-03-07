@@ -788,11 +788,11 @@ def setShutterSweepParameters(host):
         sys.exit()
 
 
-def select_OPL_or_shutter():
+def select_table_type():
     # Layout definition
     layout = [
         [sg.Text("Which table to you want to produce?")],
-        [sg.Button("OPL"), sg.Button("shutter")]
+        [sg.Button("OPL"), sg.Button("shutter"), sg.Button("amplitude")]
     ]
 
     # Create the window
@@ -801,7 +801,7 @@ def select_OPL_or_shutter():
     # Event loop to process events and get the values of the inputs
     while True:
         event, values = window.read()
-        if event in ("OPL", "shutter"):
+        if event in ("OPL", "shutter", "amplitude"):
             window.close()
             return event
         if event == sg.WINDOW_CLOSED:
